@@ -2,6 +2,10 @@
 // OSMO PAGE TRANSITION BOILERPLATE
 // -----------------------------------------
 
+import { initScalingNavigation } from "./animations/menu";
+import "./globals.css";
+import { getCurrentSectionInView, getVariableValue } from "./utils/helpers";
+
 gsap.registerPlugin(CustomEase);
 
 history.scrollRestoration = "manual";
@@ -23,8 +27,10 @@ const has = (s) => !!nextPage.querySelector(s);
 let staggerDefault = 0.05;
 let durationDefault = 0.6;
 
-CustomEase.create("osmo", "0.625, 0.05, 0, 1");
-gsap.defaults({ ease: "osmo", duration: durationDefault });
+// CustomEase.create("osmo", "0.625, 0.05, 0, 1");
+CustomEase.create("loader", "0.65, 0.01, 0.05, 0.99");
+CustomEase.create("energy", "M0,0 C0.32,0.72 0,1 1,1");
+gsap.defaults({ ease: "energy", duration: durationDefault });
 
 // -----------------------------------------
 // FUNCTION REGISTRY
@@ -32,6 +38,7 @@ gsap.defaults({ ease: "osmo", duration: durationDefault });
 
 function initOnceFunctions() {
   initLenis();
+  initScalingNavigation();
   if (onceFunctionsInitialized) return;
   onceFunctionsInitialized = true;
 
@@ -66,7 +73,49 @@ function initAfterEnterFunctions(next) {
 // -----------------------------------------
 
 function runPageOnceAnimation(next) {
+  const ignoreAnimation = true; // Set to 'true' to skip the animation for development/testing
+
   const tl = gsap.timeline();
+
+  const body = document.body;
+  const loader = document.querySelector("[data-page-loader]");
+  const logoContainer = document.querySelector("[data-load-container]");
+  const loadLogo = document.querySelector("[data-load-logo]");
+  const nextChildren = next.querySelector(
+    "[data-page-transition-reveal]",
+  ).children;
+
+  if (!ignoreAnimation) {
+    tl.set(loader, { display: "flex" })
+      .set(body, {
+        backgroundColor: getVariableValue("--_colors---background-tones--80"),
+      })
+      .from(logoContainer, { yPercent: 50, autoAlpha: 0 }, 0.5)
+      .to(
+        loadLogo,
+        {
+          clipPath: "inset(0% 0% 0% 0%)",
+          duration: 2,
+          ease: "loader",
+        },
+        ">",
+      )
+      .to(logoContainer, { yPercent: -50, autoAlpha: 0 })
+      .to(loader, { yPercent: -101 })
+      .fromTo(next, { yPercent: 50 }, { yPercent: 0, duration: 0.8 }, "<")
+      .fromTo(
+        nextChildren,
+        { yPercent: 100 },
+        { yPercent: 0, duration: 1.2, stagger: staggerDefault },
+        "<0.1",
+      )
+      .fromTo(next, { scale: 0.9 }, { scale: 1, duration: 0.8 }, "<0.4")
+      .set(body, {
+        backgroundColor: getVariableValue("--_colors---background"),
+      });
+  } else {
+    loader.style.display = "none";
+  }
 
   tl.call(
     () => {
@@ -91,7 +140,27 @@ function runPageLeaveAnimation(current, next) {
     return tl.set(current, { autoAlpha: 0 });
   }
 
-  tl.to(current, { autoAlpha: 0, duration: 0.4 });
+  const transitionSection = getCurrentSectionInView(current);
+  if (!transitionSection) return tl.set(current, { autoAlpha: 0 });
+
+  const transitionSectionChildren = transitionSection.children;
+
+  tl.to(
+    transitionSectionChildren,
+    {
+      autoAlpha: 0,
+      yPercent: -50,
+      filter: "blur(10px)",
+      stagger: staggerDefault,
+    },
+    "<",
+  ).to(
+    current,
+    {
+      autoAlpha: 0,
+    },
+    "<50%",
+  );
 
   return tl;
 }
@@ -109,15 +178,32 @@ function runPageEnterAnimation(next) {
 
   tl.add("startEnter", 0.6);
 
+  const transitionSection = next.querySelector("[data-page-transition-reveal]");
+
+  const transitionSectionChildren = transitionSection.children;
+
   tl.fromTo(
     next,
     {
       autoAlpha: 0,
     },
+    { autoAlpha: 1 },
+    "startEnter",
+  ).fromTo(
+    transitionSectionChildren,
+    {
+      autoAlpha: 0,
+      yPercent: 50,
+      filter: "blur(10px)",
+      stagger: staggerDefault,
+    },
     {
       autoAlpha: 1,
+      yPercent: 0,
+      filter: "blur(0px)",
+      stagger: staggerDefault,
     },
-    "startEnter",
+    ">",
   );
 
   tl.add("pageReady");

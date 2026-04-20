@@ -15,4 +15,12 @@ module.exports = {
     umdNamedDefine: true,
     clean: true,
   },
+  module: {
+    rules: [
+      {
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"],
+      },
+    ],
+  },
 };

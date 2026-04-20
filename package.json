@@ -1,5 +1,5 @@
 {
-  "name": "webflow-link",
+  "name": "Lead-Glocal",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -11,6 +11,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "css-loader": "^7.1.4",
+    "style-loader": "^4.0.0",
     "webpack-cli": "^6.0.1"
   }
 }
