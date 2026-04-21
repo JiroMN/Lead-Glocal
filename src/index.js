@@ -2,7 +2,10 @@
 // OSMO PAGE TRANSITION BOILERPLATE
 // -----------------------------------------
 
+import { initLinkButtons } from "./animations/linkButtons";
 import { initScalingNavigation } from "./animations/menu";
+import { initSocietyChallenge } from "./animations/societyChallange";
+import { initTopHeading, prepTopHeading } from "./animations/topheading";
 import "./globals.css";
 import { getCurrentSectionInView, getVariableValue } from "./utils/helpers";
 
@@ -14,8 +17,8 @@ let lenis = null;
 let nextPage = document;
 let onceFunctionsInitialized = false;
 
-const hasLenis = typeof window.Lenis !== "undefined";
-const hasScrollTrigger = typeof window.ScrollTrigger !== "undefined";
+const hasLenis = () => typeof window.Lenis !== "undefined";
+const hasScrollTrigger = () => typeof window.ScrollTrigger !== "undefined";
 
 const rmMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
 let reducedMotion = rmMQ.matches;
@@ -49,8 +52,8 @@ function initOnceFunctions() {
 function initBeforeEnterFunctions(next) {
   nextPage = next || document;
 
-  // Runs before the enter animation
-  // if (has('[data-something]')) initSomething();
+  // Runs before the enter animation — pre-paint from-states so no flash.
+  if (has("[data-top-heading]")) prepTopHeading(next);
 }
 
 function initAfterEnterFunctions(next) {
@@ -58,12 +61,15 @@ function initAfterEnterFunctions(next) {
 
   // Runs after enter animation completes
   // if (has('[data-something]')) initSomething();
+  if (has("[data-top-heading]")) initTopHeading(next);
+  if (has("[data-link-button]")) initLinkButtons();
+  if (has("[data-society-challenge]")) initSocietyChallenge();
 
-  if (hasLenis) {
+  if (hasLenis() && lenis) {
     lenis.resize();
   }
 
-  if (hasScrollTrigger) {
+  if (hasScrollTrigger()) {
     ScrollTrigger.refresh();
   }
 }
@@ -73,7 +79,8 @@ function initAfterEnterFunctions(next) {
 // -----------------------------------------
 
 function runPageOnceAnimation(next) {
-  const ignoreAnimation = true; // Set to 'true' to skip the animation for development/testing
+  // const ignoreAnimation = true; // Set to 'true' to skip the animation for development/testing
+  const ignoreAnimation = false; // Set to 'true' to skip the animation for development/testing
 
   const tl = gsap.timeline();
 
@@ -236,7 +243,7 @@ barba.hooks.beforeEnter((data) => {
 });
 
 barba.hooks.afterLeave(() => {
-  if (hasScrollTrigger) {
+  if (hasScrollTrigger()) {
     ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
   }
 });
@@ -250,12 +257,12 @@ barba.hooks.afterEnter((data) => {
   initAfterEnterFunctions(data.next.container);
 
   // Settle
-  if (hasLenis) {
+  if (hasLenis() && lenis) {
     lenis.resize();
     lenis.start();
   }
 
-  if (hasScrollTrigger) {
+  if (hasScrollTrigger()) {
     ScrollTrigger.refresh();
   }
 });
@@ -325,14 +332,14 @@ function applyThemeFrom(container) {
 
 function initLenis() {
   if (lenis) return; // already created
-  if (!hasLenis) return;
+  if (!hasLenis()) return;
 
   lenis = new Lenis({
     lerp: 0.165,
     wheelMultiplier: 1.25,
   });
 
-  if (hasScrollTrigger) {
+  if (hasScrollTrigger()) {
     lenis.on("scroll", ScrollTrigger.update);
   }
 
@@ -347,7 +354,7 @@ function resetPage(container) {
   window.scrollTo(0, 0);
   gsap.set(container, { clearProps: "position,top,left,right" });
 
-  if (hasLenis) {
+  if (hasLenis() && lenis) {
     lenis.resize();
     lenis.start();
   }

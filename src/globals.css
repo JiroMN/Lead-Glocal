@@ -1,3 +1,8 @@
 [data-page-loader] {
   display: flex;
 }
+
+.link-button__clip {
+  visibility: visible;
+  clip-path: inset(0% 100% 0% 0%);
+}
