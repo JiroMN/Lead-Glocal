@@ -2,9 +2,10 @@
 // OSMO PAGE TRANSITION BOILERPLATE
 // -----------------------------------------
 
+import { initEcosystems } from "./animations/ecosystems";
 import { initLinkButtons } from "./animations/linkButtons";
 import { initScalingNavigation } from "./animations/menu";
-import { initSocietyChallenge } from "./animations/societyChallange";
+import { initHeadingMaskReveal } from "./animations/headingMaskReveal";
 import { initTopHeading, prepTopHeading } from "./animations/topheading";
 import "./globals.css";
 import { getCurrentSectionInView, getVariableValue } from "./utils/helpers";
@@ -52,8 +53,10 @@ function initOnceFunctions() {
 function initBeforeEnterFunctions(next) {
   nextPage = next || document;
 
-  // Runs before the enter animation — pre-paint from-states so no flash.
+  // Runs before the enter animation — pre-paint from-states so no flash,
+  // and heavy setup (like the ecosystems canvas) so the loader waits for it.
   if (has("[data-top-heading]")) prepTopHeading(next);
+  if (has("[data-ecosystems]")) initEcosystems(next);
 }
 
 function initAfterEnterFunctions(next) {
@@ -63,7 +66,7 @@ function initAfterEnterFunctions(next) {
   // if (has('[data-something]')) initSomething();
   if (has("[data-top-heading]")) initTopHeading(next);
   if (has("[data-link-button]")) initLinkButtons();
-  if (has("[data-society-challenge]")) initSocietyChallenge();
+  if (has("[data-heading-reveal-mask]")) initHeadingMaskReveal();
 
   if (hasLenis() && lenis) {
     lenis.resize();
@@ -92,37 +95,38 @@ function runPageOnceAnimation(next) {
     "[data-page-transition-reveal]",
   ).children;
 
-  if (!ignoreAnimation) {
-    tl.set(loader, { display: "flex" })
-      .set(body, {
-        backgroundColor: getVariableValue("--_colors---background-tones--80"),
-      })
-      .from(logoContainer, { yPercent: 50, autoAlpha: 0 }, 0.5)
-      .to(
-        loadLogo,
-        {
-          clipPath: "inset(0% 0% 0% 0%)",
-          duration: 2,
-          ease: "loader",
-        },
-        ">",
-      )
-      .to(logoContainer, { yPercent: -50, autoAlpha: 0 })
-      .to(loader, { yPercent: -101 })
-      .fromTo(next, { yPercent: 50 }, { yPercent: 0, duration: 0.8 }, "<")
-      .fromTo(
-        nextChildren,
-        { yPercent: 100 },
-        { yPercent: 0, duration: 1.2, stagger: staggerDefault },
-        "<0.1",
-      )
-      .fromTo(next, { scale: 0.9 }, { scale: 1, duration: 0.8 }, "<0.4")
-      .set(body, {
-        backgroundColor: getVariableValue("--_colors---background"),
-      });
-  } else {
+  if (ignoreAnimation) {
     loader.style.display = "none";
+    return;
   }
+
+  tl.set(loader, { display: "flex" })
+    .set(body, {
+      backgroundColor: getVariableValue("--_colors---background-tones--80"),
+    })
+    .from(logoContainer, { yPercent: 50, autoAlpha: 0 }, 0.5)
+    .to(
+      loadLogo,
+      {
+        clipPath: "inset(0% 0% 0% 0%)",
+        duration: 2,
+        ease: "loader",
+      },
+      ">",
+    )
+    .to(logoContainer, { yPercent: -50, autoAlpha: 0 })
+    .to(loader, { yPercent: -101 })
+    .fromTo(next, { yPercent: 50 }, { yPercent: 0, duration: 0.8 }, "<")
+    .fromTo(
+      nextChildren,
+      { yPercent: 100 },
+      { yPercent: 0, duration: 1.2, stagger: staggerDefault },
+      "<0.1",
+    )
+    .fromTo(next, { scale: 0.9 }, { scale: 1, duration: 0.8 }, "<0.4")
+    .set(body, {
+      backgroundColor: getVariableValue("--_colors---background"),
+    });
 
   tl.call(
     () => {
