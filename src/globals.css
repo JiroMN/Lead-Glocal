@@ -19,3 +19,14 @@
 [data-ecosystem-project-node]:not([data-active]):hover {
   width: 3.5em;
 }
+
+/* Home: Services */
+.services__top-role__p {
+  opacity: 100;
+}
+.services__h.is--role-name.is--absolute {
+  opacity: 100;
+}
+.services__top-heading__p.is--absolute {
+  opacity: 100;
+}

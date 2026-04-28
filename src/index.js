@@ -3,12 +3,14 @@
 // -----------------------------------------
 
 import { initEcosystems } from "./animations/ecosystems";
-import { initLinkButtons } from "./animations/linkButtons";
+import { initEcosystemGraphs } from "./animations/ecosystemGraph";
+import { initLinkButtons, initUnderlineButton } from "./animations/linkButtons";
 import { initScalingNavigation } from "./animations/menu";
 import { initHeadingMaskReveal } from "./animations/headingMaskReveal";
 import { initTopHeading, prepTopHeading } from "./animations/topheading";
 import "./globals.css";
 import { getCurrentSectionInView, getVariableValue } from "./utils/helpers";
+import { initServices } from "./animations/services";
 
 gsap.registerPlugin(CustomEase);
 
@@ -30,6 +32,9 @@ const has = (s) => !!nextPage.querySelector(s);
 
 let staggerDefault = 0.05;
 let durationDefault = 0.6;
+
+// Dev flag — set to true to skip the page load animation.
+const SKIP_LOAD_ANIMATION = true;
 
 // CustomEase.create("osmo", "0.625, 0.05, 0, 1");
 CustomEase.create("loader", "0.65, 0.01, 0.05, 0.99");
@@ -57,6 +62,7 @@ function initBeforeEnterFunctions(next) {
   // and heavy setup (like the ecosystems canvas) so the loader waits for it.
   if (has("[data-top-heading]")) prepTopHeading(next);
   if (has("[data-ecosystems]")) initEcosystems(next);
+  if (has("[data-services]")) initServices(next);
 }
 
 function initAfterEnterFunctions(next) {
@@ -67,6 +73,9 @@ function initAfterEnterFunctions(next) {
   if (has("[data-top-heading]")) initTopHeading(next);
   if (has("[data-link-button]")) initLinkButtons();
   if (has("[data-heading-reveal-mask]")) initHeadingMaskReveal();
+  if (has("[data-ecosystem-graph]")) initEcosystemGraphs(next);
+  if (has("[data-services]")) initServices();
+  if (has("[data-underline-button]")) initUnderlineButton();
 
   if (hasLenis() && lenis) {
     lenis.resize();
@@ -82,9 +91,6 @@ function initAfterEnterFunctions(next) {
 // -----------------------------------------
 
 function runPageOnceAnimation(next) {
-  // const ignoreAnimation = true; // Set to 'true' to skip the animation for development/testing
-  const ignoreAnimation = false; // Set to 'true' to skip the animation for development/testing
-
   const tl = gsap.timeline();
 
   const body = document.body;
@@ -95,8 +101,9 @@ function runPageOnceAnimation(next) {
     "[data-page-transition-reveal]",
   ).children;
 
-  if (ignoreAnimation) {
+  if (SKIP_LOAD_ANIMATION) {
     loader.style.display = "none";
+    resetPage(next); // clears the position:fixed set by beforeEnter so we can scroll
     return;
   }
 

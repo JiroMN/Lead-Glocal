@@ -26,3 +26,24 @@ export function initLinkButtons() {
     });
   });
 }
+
+export function initUnderlineButton() {
+  const buttons = document.querySelectorAll("[data-underline-button]");
+
+  buttons.forEach((button) => {
+    const underline = button.querySelector("[data-underline-button-line]");
+
+    button.addEventListener("mouseenter", () => {
+      let tl = gsap.timeline();
+
+      tl.to(underline, {
+        scaleX: 0,
+        transformOrigin: "right",
+        duration: 0.4,
+      }).to(underline, {
+        scaleX: 1,
+        transformOrigin: "left",
+      });
+    });
+  });
+}
