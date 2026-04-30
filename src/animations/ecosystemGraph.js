@@ -68,7 +68,7 @@ const STATES = {
       { x: 0.82, y: 0.55 }, // 4 mid-right
       { x: 0.5, y: 0.85 }, // 5 lower-center
     ],
-    lineOpacity: 0.25,
+    lineOpacity: 0.1,
     lineWidth: 1,
     particleOpacity: 0,
   },
