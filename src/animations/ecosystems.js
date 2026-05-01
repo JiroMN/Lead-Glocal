@@ -2,6 +2,33 @@ export function initEcosystems(next = document) {
   initEcosystemMap(next);
   initEcosystemProjects(next);
   initEcosystemParallax(next);
+  initEcosystemCounter(next);
+}
+
+export function initEcosystemCounter(next = document) {
+  const counter = next.querySelector("[data-ecosystem-theme-counter]");
+  const countElements = next.querySelectorAll("[data-theme-count-element]");
+  const amountOfThemes = countElements.length;
+  counter.textContent = "0";
+
+  const REPEAT_DELAY = amountOfThemes > 7 ? 0.1 : 0.3;
+
+  function incrementCounter() {
+    if (counter.textContent < amountOfThemes) {
+      counter.textContent = parseInt(counter.textContent) + 1;
+    }
+  }
+
+  let tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: next.querySelector("[data-ecosystems]"),
+      start: "top 80%",
+    },
+    repeat: amountOfThemes - 1,
+    repeatDelay: REPEAT_DELAY,
+  });
+
+  tl.add(() => incrementCounter());
 }
 
 function initEcosystemMap(next = document) {
