@@ -11,6 +11,11 @@ import { initTopHeading, prepTopHeading } from "./animations/topheading";
 import "./globals.css";
 import { getCurrentSectionInView, getVariableValue } from "./utils/helpers";
 import { initServices } from "./animations/services";
+import {
+  initProjectCards,
+  initProjectsSlider,
+  bindProjectsSliderResize,
+} from "./animations/projects";
 
 gsap.registerPlugin(CustomEase);
 
@@ -36,7 +41,7 @@ let durationDefault = 0.6;
 // Dev flag — set to true to skip the page load animation.
 const SKIP_LOAD_ANIMATION = true;
 
-// CustomEase.create("osmo", "0.625, 0.05, 0, 1");
+CustomEase.create("osmo", "0.625, 0.05, 0, 1");
 CustomEase.create("loader", "0.65, 0.01, 0.05, 0.99");
 CustomEase.create("energy", "M0,0 C0.32,0.72 0,1 1,1");
 gsap.defaults({ ease: "energy", duration: durationDefault });
@@ -76,6 +81,11 @@ function initAfterEnterFunctions(next) {
   if (has("[data-ecosystem-graph]")) initEcosystemGraphs(next);
   if (has("[data-services]")) initServices();
   if (has("[data-underline-button]")) initUnderlineButton();
+  if (has("[data-project-card-wrap]")) initProjectCards();
+  if (has("[data-gsap-slider-init]")) {
+    initProjectsSlider();
+    bindProjectsSliderResize();
+  }
 
   if (hasLenis() && lenis) {
     lenis.resize();

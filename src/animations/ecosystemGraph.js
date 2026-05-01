@@ -124,6 +124,9 @@ const PARTICLE_MAX_SPEED = 0.003;
 // extra arrivals are silently swallowed — the pulse you DO see correlates
 // 1:1 with a particle visibly hitting the node.
 const PULSE_COOLDOWN = 450;
+// Fire pulse when particle is X% along its leg, slightly before the bounce.
+// Higher = closer to the node before pulse triggers.
+const PULSE_ANTICIPATION = 0.85;
 
 // Global registry of initialized graphs, so setEcosystemGraphState can reach
 // all of them at once.
@@ -305,19 +308,35 @@ function createGraph(wrap) {
     }
 
     // Advance + position particles. Each particle bounces between its
-    // line's endpoints — pulse whichever node it just hit, so both ends
-    // of every line get equal love and arrivals are 1:1 with pops.
+    // line's endpoints. Pulse fires slightly BEFORE the bounce (anticipation)
+    // so the eye reads it as "node received" rather than "node sent" — the
+    // pulse is already underway when the particle visibly lands.
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       p.progress += p.speed * p.direction;
+
+      // Anticipation pulse — fire when nearly at destination, once per leg.
+      if (!p.pulsed) {
+        if (p.direction === 1 && p.progress >= PULSE_ANTICIPATION) {
+          pulseNode(LINES[p.lineIdx][1]);
+          p.pulsed = true;
+        } else if (
+          p.direction === -1 &&
+          p.progress <= 1 - PULSE_ANTICIPATION
+        ) {
+          pulseNode(LINES[p.lineIdx][0]);
+          p.pulsed = true;
+        }
+      }
+
       if (p.progress >= 1) {
         p.progress = 1;
         p.direction = -1;
-        pulseNode(LINES[p.lineIdx][1]);
+        p.pulsed = false; // reset for the new leg
       } else if (p.progress <= 0) {
         p.progress = 0;
         p.direction = 1;
-        pulseNode(LINES[p.lineIdx][0]);
+        p.pulsed = false;
       }
       const [from, to] = LINES[p.lineIdx];
       const x = cx[from] + (cx[to] - cx[from]) * p.progress;
