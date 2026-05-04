@@ -16,6 +16,8 @@ import {
   initProjectsSlider,
   bindProjectsSliderResize,
 } from "./animations/projects";
+import { initAvatar } from "./animations/avatar";
+import { initCTA } from "./animations/callToAction";
 
 gsap.registerPlugin(CustomEase);
 
@@ -86,6 +88,8 @@ function initAfterEnterFunctions(next) {
     initProjectsSlider();
     bindProjectsSliderResize();
   }
+  if (has("[data-avatar]")) initAvatar();
+  if (has("[data-call-to-action]")) initCTA();
 
   if (hasLenis() && lenis) {
     lenis.resize();

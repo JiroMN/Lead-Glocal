@@ -152,7 +152,7 @@ export function initServices() {
   // the user clicks a tab.
   ScrollTrigger.create({
     trigger: section,
-    start: "top 80%",
+    start: "top bottom",
     once: true,
     onEnter: () => changeRole("architect"),
   });
