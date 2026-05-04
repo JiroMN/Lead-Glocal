@@ -18,6 +18,7 @@ import {
 } from "./animations/projects";
 import { initAvatar } from "./animations/avatar";
 import { initCTA } from "./animations/callToAction";
+import { initFooter } from "./animations/footer";
 
 gsap.registerPlugin(CustomEase);
 
@@ -90,6 +91,7 @@ function initAfterEnterFunctions(next) {
   }
   if (has("[data-avatar]")) initAvatar();
   if (has("[data-call-to-action]")) initCTA();
+  if (has("[data-footer]")) initFooter();
 
   if (hasLenis() && lenis) {
     lenis.resize();
