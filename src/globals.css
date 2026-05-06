@@ -1,10 +1,18 @@
-[data-page-loader] {
-  display: flex;
+input:focus,
+input:active {
+  border-color: var(--_colors---secondary);
 }
 
-.link-button__clip {
-  visibility: visible;
-  clip-path: inset(0% 100% 0% 0%);
+/* Loading cursor — set on <html> by default and removed via JS once init
+ * is complete. The * + !important wins over child :hover cursors so the
+ * progress hint shows everywhere, even over links and buttons. */
+html.is-loading,
+html.is-loading * {
+  cursor: progress !important;
+}
+
+[data-page-loader] {
+  display: flex;
 }
 
 /* Home: Ecosystems */

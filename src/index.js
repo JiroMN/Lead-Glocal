@@ -19,8 +19,19 @@ import {
 import { initAvatar } from "./animations/avatar";
 import { initCTA } from "./animations/callToAction";
 import { initFooter } from "./animations/footer";
+import { initCopyValue } from "./utils/initCopyValue";
+import {
+  initContactPage,
+  initContactForm,
+  prepContactPage,
+} from "./animations/contact";
 
 gsap.registerPlugin(CustomEase);
+
+// Loading cursor — shown until barba's first afterEnter completes. Gives
+// users immediate feedback that the page is still preparing (mostly for
+// the home page's heavy ecosystems canvas init).
+document.documentElement.classList.add("is-loading");
 
 history.scrollRestoration = "manual";
 
@@ -71,6 +82,7 @@ function initBeforeEnterFunctions(next) {
   if (has("[data-top-heading]")) prepTopHeading(next);
   if (has("[data-ecosystems]")) initEcosystems(next);
   if (has("[data-services]")) initServices(next);
+  if (has("[data-contact]")) prepContactPage(next);
 }
 
 function initAfterEnterFunctions(next) {
@@ -92,6 +104,9 @@ function initAfterEnterFunctions(next) {
   if (has("[data-avatar]")) initAvatar();
   if (has("[data-call-to-action]")) initCTA();
   if (has("[data-footer]")) initFooter();
+  if (has("[data-copy-value]")) initCopyValue();
+  if (has("[data-contact]")) initContactPage();
+  if (has("[data-contact-form]")) initContactForm();
 
   if (hasLenis() && lenis) {
     lenis.resize();
@@ -179,22 +194,32 @@ function runPageLeaveAnimation(current, next) {
 
   const transitionSectionChildren = transitionSection.children;
 
-  tl.to(
-    transitionSectionChildren,
-    {
-      autoAlpha: 0,
-      yPercent: -50,
-      filter: "blur(10px)",
-      stagger: staggerDefault,
-    },
-    "<",
-  ).to(
-    current,
-    {
-      autoAlpha: 0,
-    },
-    "<50%",
-  );
+  if (transitionSectionChildren) {
+    tl.to(
+      transitionSectionChildren,
+      {
+        autoAlpha: 0,
+        yPercent: -50,
+        filter: "blur(10px)",
+        stagger: staggerDefault,
+      },
+      "<",
+    ).to(
+      current,
+      {
+        autoAlpha: 0,
+      },
+      "<50%",
+    );
+  } else {
+    tl.to(
+      current,
+      {
+        autoAlpha: 0,
+      },
+      "<50%",
+    );
+  }
 
   return tl;
 }
@@ -236,6 +261,11 @@ function runPageEnterAnimation(next) {
       yPercent: 0,
       filter: "blur(0px)",
       stagger: staggerDefault,
+      // Strip the residual filter/transform/opacity inline styles after the
+      // tween completes — otherwise they keep these elements in their own
+      // compositing layer and break `backdrop-filter` on any descendant
+      // (e.g. the translucent column on the contact card).
+      clearProps: "filter,transform,opacity",
     },
     ">",
   );
@@ -253,6 +283,10 @@ function runPageEnterAnimation(next) {
 // -----------------------------------------
 
 barba.hooks.beforeEnter((data) => {
+  // Re-add the loading cursor for in-app navigations too — gives the same
+  // "wait, almost there" feedback as on first load.
+  document.documentElement.classList.add("is-loading");
+
   // Position new container on top
   gsap.set(data.next.container, {
     position: "fixed",
@@ -292,6 +326,9 @@ barba.hooks.afterEnter((data) => {
   if (hasScrollTrigger()) {
     ScrollTrigger.refresh();
   }
+
+  // Page is fully ready — drop the loading cursor.
+  document.documentElement.classList.remove("is-loading");
 });
 
 barba.init({

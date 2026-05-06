@@ -70,11 +70,15 @@ export function initFooter() {
     // AOS animation
     const brandmark = footer.querySelector("[data-footer-brandmark]");
     const wordmark = footer.querySelector("[data-footer-wordmark]");
+    const linkWrap = footer.querySelectorAll("[data-footer-p-wrap]");
     const links = footer.querySelectorAll("[data-footer-p]");
+    const linkClips = footer.querySelectorAll("[data-footer-p]");
+
     const linksSplit = SplitText.create(links, {
       type: "lines",
       mask: "lines",
     });
+
     const dynamicLinkWrappers = footer.querySelectorAll(
       "[data-footer-live-data]",
     );
@@ -110,7 +114,7 @@ export function initFooter() {
       );
 
     let aosLinkTl = gsap.timeline({
-      scrollTrigger: { ...TL_ST_CONFIG, start: "top 80%", once: true },
+      scrollTrigger: { ...TL_ST_CONFIG, start: "top 80%", once: false },
       defaults: {
         ease: "power1.out",
       },
@@ -133,26 +137,25 @@ export function initFooter() {
   const TARGET_COLOR = getVariableValue("--_colors---secondary");
   const BASE_COLOR = getVariableValue("--_colors---foreground-tones--75");
 
-  document.querySelectorAll("[data-footer] a").forEach((link) => {
-    link.addEventListener("mouseenter", () => {
-      gsap.to(link, {
-        color: TARGET_COLOR,
-        duration: 0.4,
-      });
-      //   gsap.to(link, {
-      //     autoAlpha: 0.5,
-      //     duration: 0.4,
-      //   });
+  document.querySelectorAll("[data-footer-p-wrap]").forEach((linkWrap) => {
+    const link = linkWrap.querySelectorAll("[data-footer-p]");
+    const linkClip = linkWrap.querySelectorAll("[data-footer-p-clip]");
+
+    linkWrap.addEventListener("mouseenter", () => {
+      gsap.fromTo(
+        linkClip,
+        {
+          clipPath: "inset(0% 100% 0% 0%)",
+        },
+        {
+          clipPath: "inset(0% 0% 0% 0%)",
+        },
+      );
     });
-    link.addEventListener("mouseleave", () => {
-      gsap.to(link, {
-        color: BASE_COLOR,
-        duration: 0.4,
+    linkWrap.addEventListener("mouseleave", () => {
+      gsap.to(linkClip, {
+        clipPath: "inset(0% 0% 0% 100%)",
       });
-      //   gsap.to(link, {
-      //     autoAlpha: 1,
-      //     duration: 0.4,
-      //   });
     });
   });
 }

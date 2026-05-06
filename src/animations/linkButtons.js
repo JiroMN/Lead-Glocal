@@ -2,7 +2,7 @@ export function initLinkButtons() {
   const buttons = document.querySelectorAll("[data-link-button]");
 
   buttons.forEach((button) => {
-    const clip = button.querySelector(".link-button__clip");
+    const clip = button.querySelector("[data-link-button-clip]");
 
     button.addEventListener("mouseenter", () => {
       let tl = gsap.timeline();
