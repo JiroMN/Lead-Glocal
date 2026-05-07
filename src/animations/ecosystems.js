@@ -2,7 +2,6 @@ export function initEcosystems(next = document) {
   initEcosystemMap(next);
   initEcosystemProjects(next);
   initEcosystemParallax(next);
-  initEcosystemCounter(next);
 }
 
 export function initEcosystemCounter(next = document) {

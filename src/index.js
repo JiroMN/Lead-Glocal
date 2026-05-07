@@ -2,7 +2,7 @@
 // OSMO PAGE TRANSITION BOILERPLATE
 // -----------------------------------------
 
-import { initEcosystems } from "./animations/ecosystems";
+import { initEcosystems, initEcosystemCounter } from "./animations/ecosystems";
 import { initEcosystemGraphs } from "./animations/ecosystemGraph";
 import { initLinkButtons, initUnderlineButton } from "./animations/linkButtons";
 import { initScalingNavigation } from "./animations/menu";
@@ -25,6 +25,14 @@ import {
   initContactForm,
   prepContactPage,
 } from "./animations/contact";
+import {
+  initPojectInDepth,
+  prepProjectInDepth,
+  initProjectRoles,
+  initProjectRolesScrollTrigger,
+  initImagesOnPathScroll,
+  initNextProject,
+} from "./animations/projectCollectionPage";
 
 gsap.registerPlugin(CustomEase);
 
@@ -83,6 +91,7 @@ function initBeforeEnterFunctions(next) {
   if (has("[data-ecosystems]")) initEcosystems(next);
   if (has("[data-services]")) initServices(next);
   if (has("[data-contact]")) prepContactPage(next);
+  if (has("[data-project-hero")) prepProjectInDepth(next);
 }
 
 function initAfterEnterFunctions(next) {
@@ -107,6 +116,14 @@ function initAfterEnterFunctions(next) {
   if (has("[data-copy-value]")) initCopyValue();
   if (has("[data-contact]")) initContactPage();
   if (has("[data-contact-form]")) initContactForm();
+  if (has("[data-project-hero]")) initPojectInDepth();
+  if (has("[data-project-roles]")) {
+    initProjectRoles();
+    initProjectRolesScrollTrigger();
+  }
+  if (has("[data-ecosystems]")) initEcosystemCounter(next);
+  if (has("[data-project-highlights]")) initImagesOnPathScroll();
+  if (has("[data-next-project]")) initNextProject();
 
   if (hasLenis() && lenis) {
     lenis.resize();
@@ -177,6 +194,15 @@ function runPageOnceAnimation(next) {
   return tl;
 }
 
+function getRevealSections(scope, phase) {
+  return Array.from(
+    scope.querySelectorAll("[data-page-transition-reveal]"),
+  ).filter((el) => {
+    const value = el.dataset.pageTransitionReveal;
+    return !value || value === phase;
+  });
+}
+
 function runPageLeaveAnimation(current, next) {
   const tl = gsap.timeline({
     onComplete: () => {
@@ -185,41 +211,25 @@ function runPageLeaveAnimation(current, next) {
   });
 
   if (reducedMotion) {
-    // Immediate swap behavior if user prefers reduced motion
     return tl.set(current, { autoAlpha: 0 });
   }
 
-  const transitionSection = getCurrentSectionInView(current);
-  if (!transitionSection) return tl.set(current, { autoAlpha: 0 });
+  const sections = getRevealSections(current, "leave");
 
-  const transitionSectionChildren = transitionSection.children;
-
-  if (transitionSectionChildren) {
+  sections.forEach((section, i) => {
     tl.to(
-      transitionSectionChildren,
+      section.children,
       {
         autoAlpha: 0,
         yPercent: -50,
         filter: "blur(10px)",
         stagger: staggerDefault,
       },
-      "<",
-    ).to(
-      current,
-      {
-        autoAlpha: 0,
-      },
-      "<50%",
+      i === 0 ? "<" : "<0.05",
     );
-  } else {
-    tl.to(
-      current,
-      {
-        autoAlpha: 0,
-      },
-      "<50%",
-    );
-  }
+  });
+
+  tl.to(current, { autoAlpha: 0 }, "<50%");
 
   return tl;
 }
@@ -237,38 +247,29 @@ function runPageEnterAnimation(next) {
 
   tl.add("startEnter", 0.6);
 
-  const transitionSection = next.querySelector("[data-page-transition-reveal]");
+  const sections = getRevealSections(next, "enter");
 
-  const transitionSectionChildren = transitionSection.children;
+  tl.fromTo(next, { autoAlpha: 0 }, { autoAlpha: 1 }, "startEnter");
 
-  tl.fromTo(
-    next,
-    {
-      autoAlpha: 0,
-    },
-    { autoAlpha: 1 },
-    "startEnter",
-  ).fromTo(
-    transitionSectionChildren,
-    {
-      autoAlpha: 0,
-      yPercent: 50,
-      filter: "blur(10px)",
-      stagger: staggerDefault,
-    },
-    {
-      autoAlpha: 1,
-      yPercent: 0,
-      filter: "blur(0px)",
-      stagger: staggerDefault,
-      // Strip the residual filter/transform/opacity inline styles after the
-      // tween completes — otherwise they keep these elements in their own
-      // compositing layer and break `backdrop-filter` on any descendant
-      // (e.g. the translucent column on the contact card).
-      clearProps: "filter,transform,opacity",
-    },
-    ">",
-  );
+  sections.forEach((section) => {
+    tl.fromTo(
+      section.children,
+      {
+        autoAlpha: 0,
+        yPercent: 50,
+        filter: "blur(10px)",
+        stagger: staggerDefault,
+      },
+      {
+        autoAlpha: 1,
+        yPercent: 0,
+        filter: "blur(0px)",
+        stagger: staggerDefault,
+        clearProps: "filter,transform,opacity",
+      },
+      ">",
+    );
+  });
 
   tl.add("pageReady");
   tl.call(resetPage, [next], "pageReady");
@@ -402,6 +403,10 @@ function initLenis() {
     lerp: 0.165,
     wheelMultiplier: 1.25,
   });
+
+  // Expose for other modules that need to lock/unlock scroll programmatically
+  // (e.g. the project-roles pinned section's gesture handler).
+  window.lenis = lenis;
 
   if (hasScrollTrigger()) {
     lenis.on("scroll", ScrollTrigger.update);

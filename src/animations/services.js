@@ -47,6 +47,17 @@ export function initServices() {
   }
 
   function advanceRole() {
+    // Only advance while the home page's base ecosystem graph is still in
+    // the DOM. After Barba navigates away, the autoplay tween keeps ticking
+    // (it's a regular GSAP tween, not a ScrollTrigger), so without this
+    // guard it would keep flipping the project page's ecosystem graph state.
+    if (
+      !document.querySelector(
+        "[data-wf--ecosystem-graph--variant='base']",
+      )
+    )
+      return;
+
     const idx = loopOrder.indexOf(currentRole);
     changeRole(loopOrder[(idx + 1) % loopOrder.length]);
   }
