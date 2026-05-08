@@ -33,6 +33,10 @@ import {
   initImagesOnPathScroll,
   initNextProject,
 } from "./animations/projectCollectionPage";
+import {
+  initAllProjectsPage,
+  prepAllProjectsPage,
+} from "./animations/allProjects";
 
 gsap.registerPlugin(CustomEase);
 
@@ -92,6 +96,7 @@ function initBeforeEnterFunctions(next) {
   if (has("[data-services]")) initServices(next);
   if (has("[data-contact]")) prepContactPage(next);
   if (has("[data-project-hero")) prepProjectInDepth(next);
+  if (has("[data-projects-hero]")) prepAllProjectsPage(next);
 }
 
 function initAfterEnterFunctions(next) {
@@ -124,6 +129,8 @@ function initAfterEnterFunctions(next) {
   if (has("[data-ecosystems]")) initEcosystemCounter(next);
   if (has("[data-project-highlights]")) initImagesOnPathScroll();
   if (has("[data-next-project]")) initNextProject();
+  if (has("[data-projects-hero]") && has("[data-projects-grid-wrap]"))
+    initAllProjectsPage();
 
   if (hasLenis() && lenis) {
     lenis.resize();

@@ -59,6 +59,10 @@ export function initPojectInDepth() {
       { yPercent: 0, stagger: 0.05 },
       "<50%",
     );
+
+  // Set "Meer over dit project" on target_blank
+  document.querySelector("[data-project-challenge-action-wrap] > a").target =
+    "_blank";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
