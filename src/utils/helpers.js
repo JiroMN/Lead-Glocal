@@ -57,6 +57,23 @@ export function debounce(fn, delay = 200) {
   };
 }
 
+// Scale an element's font-size so its rendered text width matches a fraction
+// of the viewport width (default 0.9 = 90vw). Works by measuring the actual
+// text width at a reference font-size, then scaling proportionally.
+//
+// Re-runs cleanly on resize — bind it like:
+//   const fit = () => fitTextToViewportWidth(el, 0.9);
+//   fit();
+//   window.addEventListener("resize", debounce(fit, 100));
+export function fitTextToViewportWidth(el, ratio = 0.9, referencePx = 100) {
+  if (!el) return;
+  el.style.fontSize = `${referencePx}px`;
+  const currentWidth = el.scrollWidth;
+  if (!currentWidth) return;
+  const target = window.innerWidth * ratio;
+  el.style.fontSize = `${referencePx * (target / currentWidth)}px`;
+}
+
 // Parse a Webflow date string into a Date object. Handles common Webflow
 // formats including:
 //   • "April 24, 2026"

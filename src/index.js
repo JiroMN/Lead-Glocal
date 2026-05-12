@@ -37,6 +37,7 @@ import {
   initAllProjectsPage,
   prepAllProjectsPage,
 } from "./animations/allProjects";
+import { prep404, init404 } from "./animations/404";
 
 gsap.registerPlugin(CustomEase);
 
@@ -97,6 +98,7 @@ function initBeforeEnterFunctions(next) {
   if (has("[data-contact]")) prepContactPage(next);
   if (has("[data-project-hero")) prepProjectInDepth(next);
   if (has("[data-projects-hero]")) prepAllProjectsPage(next);
+  if (has("[data-404]")) prep404(next);
 }
 
 function initAfterEnterFunctions(next) {
@@ -131,6 +133,7 @@ function initAfterEnterFunctions(next) {
   if (has("[data-next-project]")) initNextProject();
   if (has("[data-projects-hero]") && has("[data-projects-grid-wrap]"))
     initAllProjectsPage();
+  if (has("[data-404]")) init404();
 
   if (hasLenis() && lenis) {
     lenis.resize();
@@ -152,9 +155,10 @@ function runPageOnceAnimation(next) {
   const loader = document.querySelector("[data-page-loader]");
   const logoContainer = document.querySelector("[data-load-container]");
   const loadLogo = document.querySelector("[data-load-logo]");
-  const nextChildren = next.querySelector(
-    "[data-page-transition-reveal]",
-  ).children;
+  // May be null on pages without a reveal section (e.g. 404) — guard against
+  // null access below.
+  const revealSection = next.querySelector("[data-page-transition-reveal]");
+  const nextChildren = revealSection?.children;
 
   if (SKIP_LOAD_ANIMATION) {
     loader.style.display = "none";
@@ -178,17 +182,25 @@ function runPageOnceAnimation(next) {
     )
     .to(logoContainer, { yPercent: -50, autoAlpha: 0 })
     .to(loader, { yPercent: -101 })
-    .fromTo(next, { yPercent: 50 }, { yPercent: 0, duration: 0.8 }, "<")
-    .fromTo(
+    .fromTo(next, { yPercent: 50 }, { yPercent: 0, duration: 0.8 }, "<");
+
+  // Only stagger the reveal-section children if the section actually exists
+  // (pages like 404 don't have one).
+  if (nextChildren && nextChildren.length) {
+    tl.fromTo(
       nextChildren,
       { yPercent: 100 },
       { yPercent: 0, duration: 1.2, stagger: staggerDefault },
       "<0.1",
-    )
-    .fromTo(next, { scale: 0.9 }, { scale: 1, duration: 0.8 }, "<0.4")
-    .set(body, {
+    );
+  }
+
+  tl.fromTo(next, { scale: 0.9 }, { scale: 1, duration: 0.8 }, "<0.4").set(
+    body,
+    {
       backgroundColor: getVariableValue("--_colors---background"),
-    });
+    },
+  );
 
   tl.call(
     () => {
@@ -223,6 +235,12 @@ function runPageLeaveAnimation(current, next) {
 
   const sections = getRevealSections(current, "leave");
 
+  // Fallback: no reveal-sections on this page (e.g. 404) — just fade the
+  // whole container out so the transition still happens.
+  if (!sections.length) {
+    return tl.to(current, { autoAlpha: 0 });
+  }
+
   sections.forEach((section, i) => {
     tl.to(
       section.children,
@@ -252,9 +270,19 @@ function runPageEnterAnimation(next) {
     return new Promise((resolve) => tl.call(resolve, null, "pageReady"));
   }
 
-  tl.add("startEnter", 0.6);
-
   const sections = getRevealSections(next, "enter");
+
+  // Fallback: no reveal-sections on this page (e.g. 404) — just fade the
+  // whole container in. Otherwise the transition would do nothing
+  // visible at all.
+  if (!sections.length) {
+    tl.fromTo(next, { autoAlpha: 0 }, { autoAlpha: 1 });
+    tl.add("pageReady");
+    tl.call(resetPage, [next], "pageReady");
+    return new Promise((resolve) => tl.call(resolve, null, "pageReady"));
+  }
+
+  tl.add("startEnter", 0.6);
 
   tl.fromTo(next, { autoAlpha: 0 }, { autoAlpha: 1 }, "startEnter");
 
