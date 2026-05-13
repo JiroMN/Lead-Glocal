@@ -9,7 +9,6 @@ export function prepContactPage(next) {
     visibility: "visible",
     autoAlpha: 0,
     yPercent: 100,
-    onComplete: () => console.log("SuccessResponse has been prepped"),
   });
 
   gsap.set(adoptionCurve, {
@@ -43,6 +42,7 @@ export function initContactForm() {
   submitBtn.addEventListener("click", (e) => {
     e.preventDefault();
     form.requestSubmit();
+    // onFormDone(form, submitBtn, doneBlock);
   });
 
   form.addEventListener("submit", () => {

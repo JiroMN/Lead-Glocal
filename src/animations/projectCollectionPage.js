@@ -117,6 +117,18 @@ export function initProjectRoles() {
 
   refs.activeRole = ROLES[0];
   section.dataset.activeRole = refs.activeRole;
+
+  // Belt + suspenders: explicitly position every role-value heading at
+  // init time. Prep does this too, but if a Barba re-entry replaces the
+  // DOM and prep timing gets disrupted, this ensures the first paint is
+  // always "only architect visible".
+  section.querySelectorAll("[data-project-role-value]").forEach((mask) => {
+    const heading = mask.querySelector("[data-project-role-heading]");
+    if (!heading) return;
+    gsap.set(heading, {
+      yPercent: mask.dataset.projectRoleValue === ROLES[0] ? 0 : 101,
+    });
+  });
 }
 
 export function setProjectRolesState(role) {
@@ -135,10 +147,10 @@ export function setProjectRolesState(role) {
 // Gesture-driven pinned section.
 //
 // Strategy:
-//   • Long pin distance (+=300%) so fast scrolls can't blow past the section
-//     in a single frame.
-//   • Capture-phase wheel listener intercepts events BEFORE Lenis can act on
-//     them, then preventDefault + stopPropagation to fully neutralize them.
+//   • Pin with a 1-viewport buffer so fast scrolls can't blow past in a
+//     single frame.
+//   • Capture-phase wheel listener intercepts events BEFORE Lenis can act
+//     on them, then preventDefault + stopPropagation to fully neutralize.
 //   • Touch + keyboard handled the same way.
 //   • Each gesture advances/retreats the state by ONE step, then locks for
 //     the duration of the role-value animation. No overlap, no skipping.
@@ -147,7 +159,8 @@ export function setProjectRolesState(role) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ANIMATION_LOCK_MS = 1100;
-const STEP_COOLDOWN_MS = 1200; // time-based — covers anim + tail of trackpad inertia
+const BURST_END_MS = 250; // wheel quiet (for "real" events) → fresh gesture
+const MIN_DELTA_Y = 5; // ignore wheel events smaller than this (inertia tail + resting-finger micro-motion)
 const TOUCH_THRESHOLD_PX = 40;
 
 let scrollTriggerInstance = null;
@@ -155,7 +168,7 @@ let currentIndex = 0;
 let isAnimLocked = false;
 let isPinActive = false;
 let listenersAttached = false;
-let lastStepTime = 0;
+let lastWheelTime = 0;
 let touchStartY = 0;
 
 function tryStep(direction) {
@@ -171,7 +184,6 @@ function tryStep(direction) {
 
   currentIndex = nextIndex;
   isAnimLocked = true;
-  lastStepTime = Date.now();
   setProjectRolesState(ROLES[currentIndex]);
   gsap.delayedCall(ANIMATION_LOCK_MS / 1000, () => {
     isAnimLocked = false;
@@ -182,16 +194,12 @@ function releasePin(direction) {
   const st = scrollTriggerInstance;
   if (!st) return;
 
-  // Stop intercepting immediately so the bump-scroll isn't swallowed.
   isPinActive = false;
   detachListeners();
 
   const lenis = window.lenis;
   const targetY = direction > 0 ? st.end + 1 : st.start - 1;
 
-  // One frame of breathing room so the listeners are fully gone before
-  // we hand scroll back to the page. Short duration so the post-release
-  // scroll-past doesn't drag.
   requestAnimationFrame(() => {
     if (lenis?.scrollTo) {
       lenis.scrollTo(targetY, { duration: 0.3 });
@@ -206,12 +214,10 @@ function activate() {
   isPinActive = true;
 
   // Treat the gesture that brought the user INTO the pin as already
-  // consumed — they have to start a fresh gesture to advance to builder.
-  // Set lastStepTime to now so the first STEP_COOLDOWN_MS of wheel events
-  // (the in-progress scroll) get ignored.
-  lastStepTime = Date.now();
-  // Same idea for touch — invalidate any in-progress touchstart so the
-  // touchend doesn't see a stale or pre-pin touchStartY.
+  // consumed — they have to start a fresh gesture to advance. Setting
+  // lastWheelTime to "now" means subsequent events from the in-progress
+  // scroll fall inside the BURST_END_MS window and get ignored.
+  lastWheelTime = Date.now();
   touchStartY = -1;
 
   attachListeners();
@@ -225,17 +231,31 @@ function deactivate() {
 
 function onWheel(e) {
   if (!isPinActive) return;
-  // Capture-phase: stop the event before Lenis or the browser sees it.
   e.preventDefault();
   e.stopPropagation();
 
-  // Time-based cooldown — after a step we ignore wheel events for
-  // STEP_COOLDOWN_MS, no matter how many events keep arriving. Some
-  // trackpads (MacBook especially) emit low-magnitude wheel events as long
-  // as fingers are resting on the surface; a quiet-period reset would let
-  // those events keep blocking new gestures indefinitely. A flat time
-  // window dodges that completely.
-  if (Date.now() - lastStepTime < STEP_COOLDOWN_MS) return;
+  // Ignore micro-events FIRST, without updating lastWheelTime. These
+  // come from two sources we don't want to count:
+  //   • Trackpad resting fingers — continuous tiny deltaY noise.
+  //   • Inertia tail decaying to ~0 at the end of a hard swipe.
+  // Skipping them entirely means they neither trigger a step nor
+  // extend the burst window.
+  if (Math.abs(e.deltaY) < MIN_DELTA_Y) return;
+
+  // Animation lock blocks during the role transition. Bail BEFORE
+  // touching lastWheelTime so the inertia tail of the gesture that
+  // triggered the animation can't extend the burst window past the
+  // lock release — otherwise the user has to "wiggle" the trackpad
+  // to register a fresh gesture.
+  if (isAnimLocked) return;
+
+  const now = Date.now();
+  const gap = now - lastWheelTime;
+  lastWheelTime = now;
+
+  // Burst-end detection: only the first "real" event after a quiet
+  // period counts as a fresh gesture. Mid-swipe events get filtered out.
+  if (gap < BURST_END_MS) return;
 
   tryStep(e.deltaY > 0 ? 1 : -1);
 }
@@ -246,14 +266,12 @@ function onTouchStart(e) {
 }
 
 function onTouchMove(e) {
-  // Block the native scroll-by-touch while pinned.
   if (!isPinActive) return;
   e.preventDefault();
 }
 
 function onTouchEnd(e) {
   if (!isPinActive) return;
-  // Sentinel: no valid touchstart was registered during this pin session.
   if (touchStartY < 0) return;
   const deltaY = touchStartY - e.changedTouches[0].clientY;
   if (Math.abs(deltaY) < TOUCH_THRESHOLD_PX) return;
@@ -276,8 +294,6 @@ function onKey(e) {
 function attachListeners() {
   if (listenersAttached) return;
   listenersAttached = true;
-  // capture: true → our listener fires BEFORE Lenis's, so stopPropagation
-  // genuinely stops Lenis from updating scroll.
   window.addEventListener("wheel", onWheel, {
     passive: false,
     capture: true,
@@ -317,14 +333,19 @@ export function initProjectRolesScrollTrigger() {
   currentIndex = 0;
   isAnimLocked = false;
 
-  // 1 viewport of pin buffer — enough margin for fast wheel/scroll bypass
-  // safety, but not so long that the post-release scroll-past feels endless.
-  // Capture-phase listeners do the actual lock; this is just safety net.
   scrollTriggerInstance = ScrollTrigger.create({
     trigger: refs.section,
     start: "center center",
     end: "+=100%",
     pin: true,
+    // The parent <main> is `display: flex`. GSAP's default pinSpacing uses
+    // `padding-bottom` on the pin-spacer to hold the layout open during the
+    // pin — but in a flex container, padding on a flex item doesn't push
+    // siblings the way it does in normal flow, so GSAP effectively skips
+    // the spacing and the next section overlaps the still-pinned trigger.
+    // `pinSpacing: "margin"` forces GSAP to use margin-bottom instead,
+    // which flex layouts DO respect.
+    pinSpacing: "margin",
     anticipatePin: 1,
     onEnter: activate,
     onEnterBack: activate,
@@ -403,13 +424,14 @@ export function initImagesOnPathScroll() {
     oldTl.progress(0).kill();
   }
 
-  // create a new timeline + ScrollTrigger
   const tl = gsap.timeline({
     scrollTrigger: {
       trigger: wrap,
       start: "top top",
-      end: "bottom bottom",
+      end: `+=${items.length * 115}%`,
       scrub: true,
+      pin: true,
+      anticipatePin: 1,
     },
     defaults: {
       ease: "none",
