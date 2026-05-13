@@ -42,8 +42,7 @@ export function initContactForm() {
 
   submitBtn.addEventListener("click", (e) => {
     e.preventDefault();
-    // form.requestSubmit();
-    onFormDone(form, submitBtn, doneBlock);
+    form.requestSubmit();
   });
 
   form.addEventListener("submit", () => {

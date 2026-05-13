@@ -38,6 +38,7 @@ import {
   prepAllProjectsPage,
 } from "./animations/allProjects";
 import { prep404, init404 } from "./animations/404";
+import { initCustomCursor } from "./animations/customCursor";
 
 gsap.registerPlugin(CustomEase);
 
@@ -71,6 +72,10 @@ const SKIP_LOAD_ANIMATION = true;
 CustomEase.create("osmo", "0.625, 0.05, 0, 1");
 CustomEase.create("loader", "0.65, 0.01, 0.05, 0.99");
 CustomEase.create("energy", "M0,0 C0.32,0.72 0,1 1,1");
+CustomEase.create(
+  "bounce",
+  "M0,0 C0.03,0 0.08,0.02 0.12,0.08 C0.18,0.2 0.22,0.5 0.28,0.85 C0.32,1.05 0.38,1.12 0.45,1.08 C0.52,1.02 0.6,0.98 0.7,1 C0.8,1.02 0.9,1 1,1",
+);
 gsap.defaults({ ease: "energy", duration: durationDefault });
 
 // -----------------------------------------
@@ -134,6 +139,7 @@ function initAfterEnterFunctions(next) {
   if (has("[data-projects-hero]") && has("[data-projects-grid-wrap]"))
     initAllProjectsPage();
   if (has("[data-404]")) init404();
+  if (has("[data-follow-mouse]")) initCustomCursor();
 
   if (hasLenis() && lenis) {
     lenis.resize();

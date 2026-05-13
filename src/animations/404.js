@@ -24,17 +24,67 @@ const WALL_THICKNESS = 200; // px — thick walls so fast bodies can't tunnel
 
 export function prep404(next = document) {
   const content = next.querySelector("[data-content]");
-  if (content) {
-    gsap.set(content, {
-      visibility: "visible",
-      autoAlpha: 0,
-      pointerEvents: "none",
-    });
-  }
+  const cursor = next.querySelector("[data-404-cursor]");
+
+  gsap.set(cursor, {
+    visibility: "visible",
+    autoAlpha: 0,
+  });
+
+  gsap.set(content, {
+    visibility: "visible",
+    autoAlpha: 0,
+    pointerEvents: "none",
+  });
 }
 
 export function init404() {
   initShatterText();
+  init404Cursor();
+}
+
+function showCursor() {
+  const cursor = document.querySelector("[data-404-cursor]");
+  gsap.fromTo(
+    cursor,
+    {
+      scaleY: 0.5,
+      scaleX: 0.5,
+      autoAlpha: 0,
+    },
+    {
+      scaleY: 1,
+      scaleX: 1,
+      autoAlpha: 1,
+      transformOrigin: "left",
+      ease: "bounce",
+      duration: 0.5,
+    },
+  );
+}
+function hideCursor(destroy = false) {
+  const cursor = document.querySelector("[data-404-cursor]");
+  gsap.to(cursor, {
+    scaleY: 0.5,
+    scaleX: 0.5,
+    autoAlpha: 0,
+
+    transformOrigin: "left",
+    ease: "bounce",
+    duration: 0.5,
+    onComplete: () => {
+      if (destroy) {
+        setTimeout(() => (cursor.style.display = "none"), 1000);
+      }
+    },
+  });
+}
+
+function init404Cursor() {
+  const section = document.querySelector("[data-404]");
+  showCursor();
+  section.addEventListener("mouseenter", () => showCursor());
+  section.addEventListener("mouseleave", () => hideCursor());
 }
 
 function showContent() {
@@ -64,14 +114,19 @@ function showContent() {
 // Click listener on the heading. One-shot — after shatter, no more clicks
 // (the letters have moved on with their lives).
 function initShatterText() {
+  const textWrap = document.querySelector("[data-shatter-text-wrap]");
   const textEl = document.querySelector("[data-shatter-text]");
   if (!textEl || typeof Matter === "undefined") return;
 
-  textEl.addEventListener(
+  textWrap.addEventListener(
     "click",
     () => {
       shatterText(textEl);
       showContent();
+      // Respond to destruction
+      document.querySelector("[data-404-cursor-text]").textContent =
+        "AAAAAAAAHHHGGG!";
+      setTimeout(() => hideCursor(true), 1000);
     },
     { once: true },
   );
@@ -174,4 +229,6 @@ function shatterText(textEl) {
 
   // 7. Let the rest of the page know — caller can fade in the 404 content.
   textEl.dispatchEvent(new CustomEvent("shatter-triggered", { bubbles: true }));
+  document.querySelector("[data-shatter-text-wrap]").style.pointerEvents =
+    "none";
 }
