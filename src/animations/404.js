@@ -10,7 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Physics tuning
-const WORLD_GRAVITY = 1; // standard downward gravity
+const WORLD_GRAVITY = 2.5; // standard downward gravity
 const RESTITUTION = 0.4; // bounciness on collision
 const FRICTION = 0.3; // surface friction (slows sliding)
 const FRICTION_AIR = 0.005; // air drag
@@ -22,9 +22,29 @@ const ANGULAR_VELOCITY = 0.35; // initial spin (random ±half)
 // World walls
 const WALL_THICKNESS = 200; // px — thick walls so fast bodies can't tunnel
 
+function isReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export function prep404(next = document) {
   const content = next.querySelector("[data-content]");
   const cursor = next.querySelector("[data-404-cursor]");
+  const matterCanvas = next.querySelector("[data-matter-canvas]");
+  const shatterWrap = next.querySelector("[data-shatter-text-wrap]");
+  const followMouse = next.querySelector("[data-follow-mouse]");
+
+  // Reduced-motion fast path: kill the interactive theatrics, just show
+  // the actual 404 message and back-to-home link.
+  if (isReducedMotion()) {
+    if (matterCanvas) gsap.set(matterCanvas, { display: "none" });
+    if (shatterWrap) gsap.set(shatterWrap, { display: "none" });
+    if (cursor) gsap.set(cursor, { display: "none" });
+    if (followMouse) gsap.set(followMouse, { display: "none" });
+    if (content) {
+      gsap.set(content, { visibility: "visible", autoAlpha: 1 });
+    }
+    return;
+  }
 
   gsap.set(cursor, {
     visibility: "visible",
@@ -39,6 +59,10 @@ export function prep404(next = document) {
 }
 
 export function init404() {
+  // Nothing to wire up in reduced-motion mode — prep already revealed the
+  // content and hid the playful bits.
+  if (isReducedMotion()) return;
+
   initShatterText();
   init404Cursor();
 }
@@ -111,25 +135,34 @@ function showContent() {
   );
 }
 
-// Click listener on the heading. One-shot — after shatter, no more clicks
-// (the letters have moved on with their lives).
+// Click listener on the headings. One click on any [data-shatter-text]
+// shatters all of them, shows the 404 content, and flips the cursor into
+// its "screaming" state. One-shot — after shatter, no more clicks.
 function initShatterText() {
   const textWrap = document.querySelector("[data-shatter-text-wrap]");
-  const textEl = document.querySelector("[data-shatter-text]");
-  if (!textEl || typeof Matter === "undefined") return;
+  const textEls = document.querySelectorAll("[data-shatter-text]");
+  if (!textEls.length || typeof Matter === "undefined") return;
 
-  textWrap.addEventListener(
-    "click",
-    () => {
-      shatterText(textEl);
+  let shattered = false;
+  textEls.forEach((el) => {
+    textWrap.addEventListener("click", () => {
+      if (shattered) return;
+      shattered = true;
+
+      textEls.forEach((t) => shatterText(t));
       showContent();
-      // Respond to destruction
-      document.querySelector("[data-404-cursor-text]").textContent =
-        "AAAAAAAAHHHGGG!";
+
+      // Cursor freak-out
+      const cursorText = document.querySelector("[data-404-cursor-text]");
+      if (cursorText) cursorText.textContent = "AAAAAAAAHHHGGG!";
       setTimeout(() => hideCursor(true), 1000);
-    },
-    { once: true },
-  );
+
+      // Stop further interaction with every wrap that held a shatter text.
+      document.querySelectorAll("[data-shatter-text-wrap]").forEach((w) => {
+        w.style.pointerEvents = "none";
+      });
+    });
+  });
 }
 
 // The actual shatter. Splits the heading into chars, lifts them out of the
