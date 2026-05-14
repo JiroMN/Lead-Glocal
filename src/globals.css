@@ -42,8 +42,3 @@ html.is-loading * {
 .services__top-heading__p.is--absolute {
   opacity: 100;
 }
-
-/* Project In Depth */
-[data-project-image-wrap] {
-  clip-path: inset(100% 0 0 0);
-}

@@ -66,6 +66,9 @@ const has = (s) => !!nextPage.querySelector(s);
 let staggerDefault = 0.05;
 let durationDefault = 0.6;
 
+let flipState = null;
+let flippedThumbnail = null;
+
 // Dev flag — set to true to skip the page load animation.
 const SKIP_LOAD_ANIMATION = true;
 
@@ -92,7 +95,7 @@ function initOnceFunctions() {
   // if (has('[data-something]')) initSomething();
 }
 
-function initBeforeEnterFunctions(next) {
+function initBeforeEnterFunctions(current, next) {
   nextPage = next || document;
 
   // Runs before the enter animation — pre-paint from-states so no flash,
@@ -101,7 +104,7 @@ function initBeforeEnterFunctions(next) {
   if (has("[data-ecosystems]")) initEcosystems(next);
   if (has("[data-services]")) initServices(next);
   if (has("[data-contact]")) prepContactPage(next);
-  if (has("[data-project-hero")) prepProjectInDepth(next);
+  if (has("[data-project-hero")) prepProjectInDepth(current, next);
   if (has("[data-projects-hero]")) prepAllProjectsPage(next);
   if (has("[data-404]")) prep404(next);
 }
@@ -265,6 +268,118 @@ function runPageLeaveAnimation(current, next) {
   return tl;
 }
 
+function runProjectsLeaveAnimation(current, next, trigger) {
+  const clicked = trigger.closest("[data-project-link]");
+  const projectTitle = clicked.querySelector("[data-project-card-heading]");
+  const thumbnail = clicked.querySelector("[data-project-image-overlay]");
+  const nextHero = next.querySelector("section");
+
+  console.log(clicked);
+
+  flipState = Flip.getState(thumbnail);
+  flippedThumbnail = thumbnail;
+
+  const tl = gsap.timeline({
+    onComplete: () => {
+      current.remove();
+      console.log(current, " got removed");
+    },
+  });
+
+  if (reducedMotion) {
+    return tl.set(current, { autoAlpha: 0 });
+  }
+
+  tl.to(
+    projectTitle,
+    {
+      autoAlpha: 0,
+      yPercent: 25,
+    },
+    0,
+  ).to(
+    current,
+    {
+      autoAlpha: 0,
+      duration: 0.6,
+    },
+    0,
+  );
+
+  tl.set(nextHero, { backgroundColor: "transparent" }, 0);
+
+  return tl;
+}
+
+function runProjectDetailsEnterAnimation(next) {
+  const nextHero = next.querySelector("section");
+  const revealTargets = nextHero.querySelectorAll(
+    "[data-custom-project-transition-reveal]",
+  );
+
+  const tl = gsap.timeline({ onStart: () => console.log("Starting Enter") });
+
+  if (reducedMotion) {
+    flipState = null;
+    flippedThumbnail = null;
+    tl.set(next, { autoAlpha: 1 });
+    tl.add("pageReady");
+    tl.call(resetPage, [next], "pageReady");
+    return new Promise((resolve) => tl.call(resolve, null, "pageReady"));
+  }
+
+  const placeholder = next.querySelector("[data-project-thumbnail]");
+
+  placeholder.parentNode.insertBefore(flippedThumbnail, placeholder);
+  placeholder.remove();
+
+  tl.add("startEnter", 0.6);
+
+  tl.add(
+    Flip.from(flipState, {
+      duration: 1,
+    }),
+    0,
+  );
+
+  tl.fromTo(
+    nextHero,
+    {
+      backgroundColor: "transparent",
+    },
+    {
+      backgroundColor: getVariableValue("--_colors---background"),
+      duration: 0.5,
+    },
+    "startEnter",
+  );
+
+  tl.fromTo(
+    revealTargets,
+    {
+      autoAlpha: 0,
+      yPercent: 25,
+    },
+    {
+      autoAlpha: 1,
+      yPercent: 0,
+    },
+    "startEnter+=0.1",
+  );
+
+  tl.add("pageReady");
+  tl.call(resetPage, [next], "pageReady");
+
+  tl.call(() => {
+    flippedThumbnail = null;
+    flipState = null;
+  });
+
+  return new Promise((resolve) => {
+    tl.call(resolve, null, "pageReady");
+  });
+}
+
 function runPageEnterAnimation(next) {
   const tl = gsap.timeline();
 
@@ -341,7 +456,7 @@ barba.hooks.beforeEnter((data) => {
     lenis.stop();
   }
 
-  initBeforeEnterFunctions(data.next.container);
+  initBeforeEnterFunctions(data.current.container, data.next.container);
   applyThemeFrom(data.next.container);
 });
 
@@ -378,6 +493,23 @@ barba.init({
   timeout: 7000,
   preventRunning: true,
   transitions: [
+    {
+      name: "project-to-detail",
+      sync: true,
+      from: { namespace: ["projects", "home"] },
+      to: { namespace: ["project-details"] },
+      custom: ({ trigger }) => trigger.hasAttribute("data-project-link"),
+      async leave(data) {
+        return runProjectsLeaveAnimation(
+          data.current.container,
+          data.next.container,
+          data.trigger,
+        );
+      },
+      async enter(data) {
+        return runProjectDetailsEnterAnimation(data.next.container);
+      },
+    },
     {
       name: "default",
       sync: true,

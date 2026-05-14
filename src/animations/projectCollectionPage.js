@@ -2,31 +2,75 @@ import { setEcosystemGraphState } from "./ecosystemGraph";
 import { animateScrambleText } from "../utils/animationHelpers";
 import { debounce, parseWebflowDate } from "../utils/helpers";
 
-export function prepProjectInDepth(next) {
-  // Prep Load in Hero
-  const hero = next.querySelector("[data-project-hero]");
-  const heading = hero.querySelector("[data-project-heading]");
-  const description = hero.querySelector("[data-project-description]");
+// ─────────────────────────────────────────────────────────────────────────────
+// Transition-aware load-in
+//
+// The project hero animates differently depending on how the user arrived:
+//
+//   • Via a project-card click → the flip-transition (see index.js) grows
+//     the clicked thumbnail into the hero image and animates the rest of
+//     the page in via [data-project-transition-reveal]. The independent
+//     load-in stays out of the way.
+//
+//   • From anywhere else (direct URL, default transition) → the hero plays
+//     its independent load-in: heading + description slide up out of masks,
+//     image clip-path reveals, reveal-content fades in.
+//
+// `useIndependentLoadIn` is the toggle. It is decided in prep based on the
+// from/to namespaces of the Barba transition.
+//
+// FLIP_FROM lists the namespaces from which a project-card click should
+// trigger the flip-transition. It mirrors the `from.namespace` array on
+// the "project-to-detail" transition in index.js — both lists must match
+// for the flip to fire correctly from every entry-point page.
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const headingSplit = SplitText.create(heading, {
-    type: "lines",
-    mask: "lines",
-    linesClass: "__padded-mask",
-  });
-  const descriptionSplit = SplitText.create(description, {
-    type: "lines",
-    mask: "lines",
-    // linesClass: "__padded-mask",
-  });
+const FLIP_FROM = ["projects", "home"];
+const PROJECT_DETAILS_NS = "project-details";
 
-  gsap.set([headingSplit.lines, descriptionSplit.lines], {
-    yPercent: 101,
-  });
+let useIndependentLoadIn = true;
 
-  // Project Roles — full-block animation. The [data-project-role-value]
+export function prepProjectInDepth(current, next) {
+  const fromNS = current?.dataset?.barbaNamespace;
+  const toNS = next?.dataset?.barbaNamespace;
+  const isFlipTransition =
+    FLIP_FROM.includes(fromNS) && toNS === PROJECT_DETAILS_NS;
+  useIndependentLoadIn = !isFlipTransition;
+
+  // Independent load-in starting states — splittext masks + clipped image.
+  // Skipped on flip-transition (which has its own reveal).
+  if (useIndependentLoadIn) {
+    const hero = next.querySelector("[data-project-hero]");
+    const heading = hero.querySelector("[data-project-heading]");
+    const description = hero.querySelector("[data-project-description]");
+    const imageWrap = hero.querySelector("[data-project-image-overlay]");
+
+    const headingSplit = SplitText.create(heading, {
+      type: "lines",
+      mask: "lines",
+      linesClass: "__padded-mask",
+    });
+    const descriptionSplit = SplitText.create(description, {
+      type: "lines",
+      mask: "lines",
+    });
+
+    gsap.set([headingSplit.lines, descriptionSplit.lines], { yPercent: 101 });
+    gsap.set(imageWrap, { clipPath: "inset(100% 0 0 0)" });
+  }
+
+  // Reveal-content starting state — applies in both paths. The flip
+  // enter animation fades these in; the independent path does it in
+  // initPojectInDepth.
+  const revealContent = next.querySelectorAll(
+    "[data-project-transition-reveal]",
+  );
+  gsap.set(revealContent, { autoAlpha: 0 });
+
+  // Project Roles — always prepped so the first paint is "only architect
+  // visible", regardless of transition path. The [data-project-role-value]
   // is the mask (overflow:hidden) and [data-project-role-heading] is the
-  // text inside it that we slide. Architect stays visible by default,
-  // others get pushed below their mask.
+  // text inside it that we slide.
   const roles = next.querySelector("[data-project-roles]");
   if (roles) {
     roles.querySelectorAll("[data-project-role-value]").forEach((mask) => {
@@ -40,27 +84,43 @@ export function prepProjectInDepth(next) {
 }
 
 export function initPojectInDepth() {
-  // Load in Hero
-  const hero = document.querySelector("[data-project-hero]");
-  const heading = hero.querySelector("[data-project-heading]");
-  const description = hero.querySelector("[data-project-description]");
-  const image = hero.querySelector("[data-project-image-wrap]");
-
-  const headingLines = hero.querySelectorAll("[data-project-heading] *");
-  const descriptionLines = hero.querySelectorAll(
-    "[data-project-description] *",
-  );
-
   let loadInTl = gsap.timeline({ delay: 0.7 });
-  loadInTl
-    .to(image, { clipPath: "inset(0% 0 0 0)", duration: 0.7 })
-    .to(
-      [...headingLines, ...descriptionLines],
-      { yPercent: 0, stagger: 0.05 },
-      "<50%",
+
+  if (useIndependentLoadIn) {
+    // Load in Hero
+    const hero = document.querySelector("[data-project-hero]");
+    const heading = hero.querySelector("[data-project-heading]");
+    const description = hero.querySelector("[data-project-description]");
+    const imageWrap = hero.querySelector("[data-project-image-overlay]");
+
+    const headingLines = hero.querySelectorAll("[data-project-heading] *");
+    const descriptionLines = hero.querySelectorAll(
+      "[data-project-description] *",
     );
 
-  // Set "Meer over dit project" on target_blank
+    loadInTl
+      .to([...headingLines, ...descriptionLines], {
+        yPercent: 0,
+        stagger: 0.05,
+      })
+      .to(
+        imageWrap,
+        {
+          clipPath: "inset(0% 0 0 0)",
+          duration: 0.8,
+        },
+        "<50%",
+      );
+  }
+
+  const revealContent = document.querySelectorAll(
+    "[data-project-transition-reveal]",
+  );
+  loadInTl.to(revealContent, {
+    autoAlpha: 1,
+  });
+
+  // Set "Meer over dit project" on target _blank
   document.querySelector("[data-project-challenge-action-wrap] > a").target =
     "_blank";
 }
