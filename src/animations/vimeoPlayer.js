@@ -307,3 +307,19 @@ export function initVimeoLightboxAdvanced() {
     });
   });
 }
+
+export function initThumbnail() {
+  const thumbnail = document.querySelector("[data-vimeo-player-thumbnail]");
+  const button = thumbnail.querySelector("[data-vimeo-player-button]");
+
+  thumbnail.addEventListener("mouseenter", function () {
+    gsap.to(button, {
+      scale: 1.1,
+    });
+  });
+  thumbnail.addEventListener("mouseleave", function () {
+    gsap.to(button, {
+      scale: 1,
+    });
+  });
+}

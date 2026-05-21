@@ -44,6 +44,7 @@ export function prepProjectInDepth(current, next) {
     const heading = hero.querySelector("[data-project-heading]");
     const description = hero.querySelector("[data-project-description]");
     const imageWrap = hero.querySelector("[data-project-image-overlay]");
+    const vimeoThumbnail = hero.querySelector("[data-vimeo-player-thumbnail]");
 
     const headingSplit = SplitText.create(heading, {
       type: "lines",
@@ -57,6 +58,12 @@ export function prepProjectInDepth(current, next) {
 
     gsap.set([headingSplit.lines, descriptionSplit.lines], { yPercent: 101 });
     gsap.set(imageWrap, { clipPath: "inset(100% 0 0 0)" });
+    if (vimeoThumbnail) {
+      gsap.set(vimeoThumbnail, {
+        scale: 0.9,
+        autoAlpha: 0,
+      });
+    }
   }
 
   // Reveal-content starting state — applies in both paths. The flip
@@ -92,6 +99,7 @@ export function initPojectInDepth() {
     const heading = hero.querySelector("[data-project-heading]");
     const description = hero.querySelector("[data-project-description]");
     const imageWrap = hero.querySelector("[data-project-image-overlay]");
+    const vimeoThumbnail = hero.querySelector("[data-vimeo-player-thumbnail]");
 
     const headingLines = hero.querySelectorAll("[data-project-heading] *");
     const descriptionLines = hero.querySelectorAll(
@@ -110,7 +118,16 @@ export function initPojectInDepth() {
           duration: 0.8,
         },
         "<50%",
-      );
+      )
+      .add(() => {
+        if (vimeoThumbnail) {
+          gsap.to(vimeoThumbnail, {
+            scale: 1,
+            autoAlpha: 1,
+            transformOrigin: "right bottom",
+          });
+        }
+      }, "<50%");
   }
 
   const revealContent = document.querySelectorAll(

@@ -39,7 +39,10 @@ import {
 } from "./animations/allProjects";
 import { prep404, init404 } from "./animations/404";
 import { initCustomCursor } from "./animations/customCursor";
-import { initVimeoLightboxAdvanced } from "./animations/vimeoPlayer";
+import {
+  initThumbnail,
+  initVimeoLightboxAdvanced,
+} from "./animations/vimeoPlayer";
 
 gsap.registerPlugin(CustomEase);
 
@@ -145,6 +148,7 @@ function initAfterEnterFunctions(next) {
   if (has("[data-404]")) init404();
   if (has("[data-follow-mouse]")) initCustomCursor();
   if (has("[data-vimeo-lightbox-init]")) initVimeoLightboxAdvanced();
+  if (has("[data-vimeo-player-thumbnail]")) initThumbnail();
 
   if (hasLenis() && lenis) {
     lenis.resize();
