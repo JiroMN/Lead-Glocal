@@ -1,3 +1,26 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared dot-position lookup
+//
+// Project nodes (DOM overlay) align to dots (canvas-rendered from the SVG
+// map) via a stable index ID. initEcosystemMap populates this on every
+// layout() call; initEcosystemProjects reads from it to position nodes in
+// the same coordinate space as the canvas dots — so they stay locked
+// regardless of viewport size.
+//
+// dotPositions[id] = { x, y } in canvas-relative CSS pixels.
+// mapCanvas is the canvas element itself, used to translate canvas-relative
+// coords into the project-node's parent-relative coords at positioning time.
+// ─────────────────────────────────────────────────────────────────────────────
+let dotPositions = [];
+let mapCanvas = null;
+
+// Dev helper: open the page with ?showDots=true to render each dot's index
+// number on top of the canvas. Use this once to look up which ID matches
+// which city, then enter that ID in Webflow CMS.
+const SHOW_DOT_IDS =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("showDots") === "true";
+
 export function initEcosystems(next = document) {
   initEcosystemMap(next);
   initEcosystemProjects(next);
@@ -73,6 +96,7 @@ function initEcosystemMap(next = document) {
     mapWrap.style.position = "relative";
   }
   mapWrap.appendChild(canvas);
+  mapCanvas = canvas;
 
   // Hide the SVG — we don't need it rendered anymore, but keep it in DOM
   // so layout (and getBoundingClientRect) stays correct.
@@ -113,7 +137,14 @@ function initEcosystemMap(next = document) {
       dotX[i] = sourceDots[i].x * scale + offsetX;
       dotY[i] = sourceDots[i].y * scale + offsetY;
       dotR[i] = Math.max(sourceDots[i].r * scale, 0.5);
+      // Mirror into the module-level lookup so project nodes can read
+      // dot positions without poking at the typed arrays.
+      dotPositions[i] = { x: dotX[i], y: dotY[i] };
     }
+
+    // Reposition project-node DOM overlays whenever the map relayouts,
+    // so they stay locked to their assigned dots across viewport changes.
+    positionProjectNodes();
   };
 
   layout();
@@ -160,6 +191,10 @@ function initEcosystemMap(next = document) {
   // 0.18-0.22 feels like Webflow's default interaction smoothing.
   const CURSOR_LERP = 0.15;
 
+  // Hover-target tracking for the dev overlay — single closest dot.
+  const HOVER_RADIUS = 15; // px: cursor must be within this of the nearest dot
+  const HOVER_RADIUS_SQ = HOVER_RADIUS * HOVER_RADIUS;
+
   // --- 6. Render loop --------------------------------------------------
   const render = () => {
     // Smooth the tracked cursor toward the real one (cursor-lag effect).
@@ -167,6 +202,11 @@ function initEcosystemMap(next = document) {
     trackY += (mouseY - trackY) * CURSOR_LERP;
 
     ctx.clearRect(0, 0, cssW, cssH);
+
+    // Find the single dot closest to the cursor (only used by the dev
+    // overlay, but cheap to compute alongside the main loop).
+    let hoveredIndex = -1;
+    let hoveredDistSq = Infinity;
 
     for (let i = 0; i < len; i++) {
       // Distance → target intensity (squared trick: skip sqrt when far).
@@ -176,6 +216,11 @@ function initEcosystemMap(next = document) {
       let target = 0;
       if (distSq < THRESHOLD_SQ) {
         target = 1 - Math.sqrt(distSq) / THRESHOLD;
+      }
+
+      if (SHOW_DOT_IDS && distSq < hoveredDistSq) {
+        hoveredDistSq = distSq;
+        hoveredIndex = i;
       }
 
       // Asymmetric lerp → plankton trail behaviour.
@@ -192,6 +237,22 @@ function initEcosystemMap(next = document) {
       ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
       ctx.fill();
     }
+
+    // Dev overlay: render the ID of only the single dot directly under
+    // the cursor (within HOVER_RADIUS). Visit with ?showDots=true.
+    // Color is bright orange — high contrast on both the white background
+    // between dots AND the purple-blue dots themselves.
+    if (
+      SHOW_DOT_IDS &&
+      hoveredIndex >= 0 &&
+      hoveredDistSq < HOVER_RADIUS_SQ
+    ) {
+      ctx.fillStyle = "#FF6F00";
+      ctx.font = "bold 28px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(String(hoveredIndex), dotX[hoveredIndex], dotY[hoveredIndex] - 10);
+    }
   };
 
   // Piggyback on GSAP's ticker — one loop, synced with every other animation.
@@ -206,13 +267,10 @@ function initEcosystemProjects() {
     "[data-ecosystem-project-node]",
   );
 
-  // Position each project on map
-  projectNodes.forEach((p) => {
-    const x = parseFloat(p.dataset.x); // 0-100
-    const y = parseFloat(p.dataset.y); // 0-100
-    p.style.left = x + "%";
-    p.style.top = y + "%";
-  });
+  // Position each project on map by looking up its assigned dot ID.
+  // Actual positioning logic lives in positionProjectNodes() so the
+  // map's layout() can call it on every resize.
+  positionProjectNodes();
 
   function selectTheme(theme) {
     animateThemeSelection(theme);
@@ -317,6 +375,36 @@ function initEcosystemParallax() {
     fgY(0);
     bgX?.(0);
     bgY?.(0);
+  });
+}
+
+// Position every [data-ecosystem-project-node] so its top-left aligns
+// with its assigned dot on the map. Reads dotPositions (canvas-relative
+// CSS px) and translates into the node's offsetParent coordinate space.
+// Safe to call multiple times — invoked on init + on every map relayout.
+function positionProjectNodes() {
+  if (!mapCanvas || !dotPositions.length) return;
+
+  const canvasRect = mapCanvas.getBoundingClientRect();
+  const nodes = document.querySelectorAll("[data-ecosystem-project-node]");
+
+  nodes.forEach((node) => {
+    const id = parseInt(node.dataset.dotId, 10);
+    if (isNaN(id)) return;
+    const dot = dotPositions[id];
+    if (!dot) return;
+
+    const parent = node.offsetParent;
+    if (!parent) return;
+    const parentRect = parent.getBoundingClientRect();
+
+    // Canvas-relative dot coords → parent-relative coords. Both rects use
+    // viewport coordinates from getBoundingClientRect so the math is direct.
+    const x = canvasRect.left - parentRect.left + dot.x;
+    const y = canvasRect.top - parentRect.top + dot.y;
+
+    node.style.left = x + "px";
+    node.style.top = y + "px";
   });
 }
 
