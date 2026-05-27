@@ -505,7 +505,7 @@ export function initImagesOnPathScroll() {
     scrollTrigger: {
       trigger: wrap,
       start: "top top",
-      end: `+=${items.length * 115}%`,
+      end: `+=${items.length * 125}%`,
       scrub: true,
       pin: true,
       anticipatePin: 1,

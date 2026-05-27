@@ -43,6 +43,7 @@ import {
   initThumbnail,
   initVimeoLightboxAdvanced,
 } from "./animations/vimeoPlayer";
+import { initLayoutManager } from "./utils/layoutManager";
 
 gsap.registerPlugin(CustomEase);
 
@@ -92,6 +93,7 @@ gsap.defaults({ ease: "energy", duration: durationDefault });
 function initOnceFunctions() {
   initLenis();
   initScalingNavigation();
+  initLayoutManager();
   if (onceFunctionsInitialized) return;
   onceFunctionsInitialized = true;
 

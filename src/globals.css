@@ -19,19 +19,6 @@ html.is-loading * {
   padding: 5px;
 }
 
-/* Home: Ecosystems */
-[data-ecosystem-project-node] {
-  transform: translate(-50%, -50%);
-  /* Energy */
-  transition: width 0.5s cubic-bezier(0.625, 0.05, 0, 1);
-}
-[data-ecosystem-project-node][data-active] {
-  width: 5em;
-}
-[data-ecosystem-project-node]:not([data-active]):hover {
-  width: 3.5em;
-}
-
 /* Home: Services */
 .services__top-role__p {
   opacity: 100;
