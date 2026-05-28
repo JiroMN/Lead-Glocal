@@ -282,15 +282,12 @@ function runProjectsLeaveAnimation(current, next, trigger) {
   const thumbnail = clicked.querySelector("[data-project-image-overlay]");
   const nextHero = next.querySelector("section");
 
-  console.log(clicked);
-
   flipState = Flip.getState(thumbnail);
   flippedThumbnail = thumbnail;
 
   const tl = gsap.timeline({
     onComplete: () => {
       current.remove();
-      console.log(current, " got removed");
     },
   });
 
@@ -324,8 +321,9 @@ function runProjectDetailsEnterAnimation(next) {
   const revealTargets = nextHero.querySelectorAll(
     "[data-custom-project-transition-reveal]",
   );
+  const projectRoles = next.querySelector("[data-project-roles]");
 
-  const tl = gsap.timeline({ onStart: () => console.log("Starting Enter") });
+  const tl = gsap.timeline();
 
   if (reducedMotion) {
     flipState = null;
@@ -373,6 +371,17 @@ function runProjectDetailsEnterAnimation(next) {
       yPercent: 0,
     },
     "startEnter+=0.1",
+  );
+
+  tl.fromTo(
+    projectRoles,
+    {
+      autoAlpha: 0,
+    },
+    {
+      autoAlpha: 1,
+    },
+    "startEnter+=0.5",
   );
 
   tl.add("pageReady");

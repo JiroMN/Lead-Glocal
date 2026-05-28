@@ -59,6 +59,29 @@ lead-glocal-cms/
 
 ---
 
+## 2.5. Velden die een MENS invult — content-producer laat deze altijd op `null`
+
+Drie velden worden **niet** door de content-producer of de geautomatiseerde import ingevuld. Ze vereisen menselijk oordeel en context die niet uit bronmateriaal te halen is. Houd deze **altijd op `null`**:
+
+| Veld | Waarom mens-werk |
+|---|---|
+| `highlights` | Het koppelen van highlights aan een project vereist redactionele keuze. Een mens linkt deze later handmatig in Webflow. |
+| `coordinaat_voor_kaart_positie` | Alleen relevant zodra een project aan een thema gekoppeld is en op de Nederland-kaart getoond wordt. De positie-ID wordt handmatig opgezocht via `?showDots=true`. |
+| Alle Vimeo-velden (`heeft_vimeo_link`, `vimeo_video_id`, `vimeo_thumbnail`) | Video's worden door een mens geselecteerd, geüpload en gekoppeld. |
+
+De content-producer levert deze dus aan als:
+```yaml
+highlights: null
+coordinaat_voor_kaart_positie: null
+heeft_vimeo_link: false
+vimeo_video_id: null
+vimeo_thumbnail: null
+```
+
+De importeur laat deze velden leeg bij het aanmaken van items (of zet `heeft_vimeo_link`/`vimeo-video-player-zichtbaarheid` op `false`). Een mens vult ze later in Webflow aan.
+
+---
+
 ## 3. Algemene regels voor frontmatter en velden
 
 - Gebruik **strict YAML** voor frontmatter (driedubbele streep `---` boven en onder).
@@ -109,20 +132,25 @@ De content-producer moet de slug expliciet meegeven in de frontmatter (niet auto
 
 ---
 
-## 6. Vimeo-regels
+## 6. Vimeo-regels — MENS-WERK, content-producer laat alles op `null`
 
-Een Vimeo-video op een project is **optioneel**. Maar als er één is, gelden er strikte regels:
+Vimeo-video's worden volledig door een mens beheerd: selecteren, uploaden, koppelen. De content-producer en de geautomatiseerde import raken deze velden **niet** aan.
 
-- `heeft_vimeo_link` (of `vimeo_video_player_zichtbaarheid` in archief) → moet `true` zijn.
-- `vimeo_video_id` → alleen de numerieke ID, **geen volledige URL**.
-  - Van `https://vimeo.com/1194370924` → `vimeo_video_id: '1194370924'`
-  - Quote als string in YAML (anders interpreteert YAML het als nummer en kan leading zeros wegvallen).
-- `vimeo_thumbnail` → **VERPLICHT** wanneer Vimeo aan staat. Zonder thumbnail kapt het design.
+De content-producer levert altijd aan:
+```yaml
+heeft_vimeo_link: false
+vimeo_video_id: null
+vimeo_thumbnail: null
+```
 
-Als er **geen** Vimeo-video is:
-- `heeft_vimeo_link: false`
-- `vimeo_video_id: null`
-- `vimeo_thumbnail: null`
+(Geldt voor zowel Projecten als Archief Projecten.)
+
+**Ter referentie voor de mens die het later invult** — wat dan geldt:
+- `heeft_vimeo_link` → `true` zetten.
+- `vimeo_video_id` → alleen de numerieke ID, geen volledige URL. Van `https://vimeo.com/1194370924` → `1194370924`.
+- `vimeo_thumbnail` → verplicht zodra Vimeo aan staat; zonder thumbnail kapt het design.
+
+Maar dat is dus een **handmatige** stap achteraf, geen onderdeel van deze import.
 
 ---
 
@@ -175,23 +203,25 @@ Externe URL naar de website van het initiatief of een andere bron met meer info.
 - **Voorbeeld:** `https://stroomgroenehart.nl`, `https://foodinnovationacademy.nl/over-fia`
 - **Niet doen:** lege strings, relatieve paden, mailto-links.
 
+**Schrijfstijl voor alle drie de rollen (belangrijk):** schrijf de rol als een **handeling/gerund-frase** die begint met "Het [werkwoord]en van ...". Begin **niet** elke keer met "Lead Glocal" — dat wordt eentonig wanneer de drie rollen onder elkaar staan. De zin beschrijft de werkzaamheid zelf, niet de uitvoerder.
+
 #### `architect` (PlainText, single-line, max 135)
-Eén zin: welke waarde of werkzaamheden heeft Lead Glocal verricht in haar rol als **architect** (ontwerper van het ecosysteem)?
-- **Werkwoorden om mee te beginnen:** `ontwierp`, `bracht in kaart`, `definieerde`, `bouwde de structuur van`
-- **Tone of voice:** actieve formulering, één zin, eindigt met punt.
-- **Voorbeeld:** `Lead Glocal ontwierp de structuur waarbinnen ondernemers, onderwijs en overheid samen werkten aan de energietransitie.`
+Eén frase: welke werkzaamheid hoort bij de rol als **architect** (ontwerper van het ecosysteem)?
+- **Vorm:** "Het ontwerpen van ...", "Het in kaart brengen van ...", "Het definiëren van ..."
+- **Goed voorbeeld:** `Het ontwerpen van de structuur waarbinnen ondernemers, onderwijs en overheid samenwerken aan de energietransitie.`
+- **Vermijd:** `Lead Glocal ontwierp ...` (te repetitief naast de andere rollen).
 
 #### `bouwer` (PlainText, multi-line, max 135)
-Eén zin: welke waarde of werkzaamheden heeft Lead Glocal verricht in haar rol als **bouwer** (uitvoerder, opzetter)?
-- **Werkwoorden:** `bracht bijeen`, `richtte in`, `zette op`, `realiseerde`
-- **Voorbeeld:** `Lead Glocal bracht partijen bijeen en richtte de samenwerking in zodat losse initiatieven als geheel gingen functioneren.`
+Eén frase: welke werkzaamheid hoort bij de rol als **bouwer** (uitvoerder, opzetter)?
+- **Vorm:** "Het bijeenbrengen van ...", "Het inrichten van ...", "Het opzetten van ..."
+- **Goed voorbeeld:** `Het bijeenbrengen van partijen en het inrichten van de samenwerking zodat losse initiatieven als geheel gaan functioneren.`
 
 #### `facilitator` (PlainText, multi-line, max 135)
-**Let op:** in de Webflow CMS heet de slug nog `manager` (legacy naming), maar de getoonde label is **Facilitator**. In je markdown gebruik je `facilitator:` — de importeur weet dit te mappen naar het juiste veld.
+**Let op:** in de Webflow CMS heet de slug nog `manager` (legacy naming), maar het getoonde label is **Facilitator**. In je markdown gebruik je `facilitator:` — de importeur weet dit te mappen naar het juiste veld. (Het label mag in de UI "manager" of "facilitator" zijn; dat verandert niets aan de slug-mapping of de copy.)
 
-Eén zin: welke waarde of werkzaamheden heeft Lead Glocal verricht in haar rol als **facilitator** (begeleider, hoeder van het ecosysteem)?
-- **Werkwoorden:** `bewaakt`, `begeleidt`, `coacht`, `faciliteert`, `organiseert workshops/hackathons/sessies`
-- **Voorbeeld:** `Lead Glocal bewaakt de groei van het platform en zorgt dat STROOM blijft functioneren als zelfstandig, lerend ecosysteem.`
+Eén frase: welke werkzaamheid hoort bij de rol als **facilitator** (begeleider, hoeder van het ecosysteem)?
+- **Vorm:** "Het bewaken van ...", "Het begeleiden van ...", "Het faciliteren van ..."
+- **Goed voorbeeld:** `Het bewaken van de groei van het platform en zorgen dat STROOM blijft functioneren als zelfstandig, lerend ecosysteem.`
 
 ### 7.2. Velden — optioneel maar verwacht
 
@@ -205,33 +235,22 @@ Alleen relevant als `featured: true`. Als `true`: project staat vooraan in de ri
 - **Default:** `false`
 - **Richtlijn:** spaarzaam gebruiken (1-3 projecten max). Voor projecten die je echt eerst wil tonen.
 
-#### `highlights` (MultiReference → Highlights collectie)
-Een lijst van Highlight-slugs die onderaan de project-detailpagina worden getoond. Elke gerefereerde highlight moet bestaan in `/highlights/<slug>/highlight.md`.
-- **Frontmatter waarde:** YAML-lijst van slugs (strings).
-- **Voorbeeld:**
+#### `highlights` (MultiReference → Highlights collectie) — MENS-WERK
+Het koppelen van highlights aan een project is een redactionele keuze die een mens later handmatig in Webflow maakt. **De content-producer laat dit altijd op `null`.** Zie sectie 2.5.
+- **Altijd:** `highlights: null`
+
+#### `coordinaat_voor_kaart_positie` (Number, integer, positive) — MENS-WERK
+ID van een stipje op de Nederland-kaart. Alleen relevant zodra een project aan een thema gekoppeld is en op de kaart verschijnt. Wordt handmatig opgezocht (via `?showDots=true`) door een mens. **De content-producer laat dit altijd op `null`.** Zie sectie 2.5.
+- **Altijd:** `coordinaat_voor_kaart_positie: null`
+
+#### `heeft_vimeo_link` / `vimeo_video_id` / `vimeo_thumbnail` — MENS-WERK
+Alle Vimeo-velden worden door een mens beheerd. **De content-producer laat deze altijd op de leeg-waarde.** Zie sectie 6.
+- **Altijd:**
   ```yaml
-  highlights:
-    - kenniscafe-fia
-    - van-topsector-energie-naar-energy-innovation-nl
+  heeft_vimeo_link: false
+  vimeo_video_id: null
+  vimeo_thumbnail: null
   ```
-- **Geen highlights?** Zet `highlights: null` of `highlights: []`.
-
-#### `coordinaat_voor_kaart_positie` (Number, integer, positive)
-ID van een stipje op de Nederland-kaart van de homepagina. Wordt **handmatig** opgezocht door iemand met toegang tot de live site (via `https://www.leadglocal.eu/?showDots=true`). De content-producer mag dit veld **leeg laten** (`null`).
-- **Default:** `null`
-- **Wie vult dit?** Een mens, achteraf in Webflow.
-
-#### `heeft_vimeo_link` (Switch / Boolean)
-Toggle voor de Vimeo-player. Zie sectie 6.
-- **Default:** `false`
-
-#### `vimeo_video_id` (PlainText, single-line)
-Alleen ID, als string. Zie sectie 6.
-- **Default:** `null`
-
-#### `vimeo_thumbnail` (Image)
-Verplicht als `heeft_vimeo_link: true`. Zie sectie 6.
-- **Default:** `null`
 
 ### 7.3. Compleet voorbeeld: Projecten
 
@@ -246,18 +265,20 @@ hero_afbeelding: hero.jpg
 logo_avatar: logo.png
 uitdaging: De energietransitie in het Groene Hart vroeg om samenwerking die er nog niet was. Lead Glocal bouwde het platform dat losse partijen verbond.
 meer_over_dit_project: https://stroomgroenehart.nl
-architect: Lead Glocal ontwierp de structuur waarbinnen ondernemers, onderwijs en overheid samen werkten aan de energietransitie.
-bouwer: Lead Glocal bracht partijen bijeen en richtte de samenwerking in zodat losse initiatieven als geheel gingen functioneren.
-facilitator: Lead Glocal bewaakt de groei van het platform en zorgt dat STROOM blijft functioneren als zelfstandig, lerend ecosysteem.
+architect: Het ontwerpen van de structuur waarbinnen ondernemers, onderwijs en overheid samenwerken aan de energietransitie.
+bouwer: Het bijeenbrengen van partijen en het inrichten van de samenwerking zodat losse initiatieven als geheel gaan functioneren.
+facilitator: Het bewaken van de groei van het platform en zorgen dat STROOM blijft functioneren als zelfstandig, lerend ecosysteem.
 featured: true
 featured_priority: true
 highlights: null
+coordinaat_voor_kaart_positie: null
 heeft_vimeo_link: false
 vimeo_video_id: null
 vimeo_thumbnail: null
-coordinaat_voor_kaart_positie: null
 ---
 ```
+
+> Let op: `highlights`, `coordinaat_voor_kaart_positie` en de Vimeo-velden staan bewust op `null` — dat is mens-werk (sectie 2.5).
 
 Geen body. Project-detailpagina bouwt zichzelf op uit de bovenstaande velden via het Webflow-template.
 
@@ -291,16 +312,16 @@ De volledige projectomschrijving. Komt in de markdown **na** de frontmatter.
 - **Richtlijn:** "Houd de body simpel. Niet te veel styling, headings, of dergelijken. Dit zal het design erg rommelig maken." (rechtstreeks uit de Webflow help-text)
 - **Lengte:** geen harde limiet, maar realistisch 200-1500 woorden.
 
-### 8.2. Velden — optioneel
+### 8.2. Velden — Vimeo (MENS-WERK)
 
-#### `heeft_vimeo_link`
-**Let op de naam in YAML:** in archief is de Webflow-slug `vimeo-video-player-zichtbaarheid`, maar in je YAML gebruik je net als bij Projecten `heeft_vimeo_link`. De importeur weet dit te mappen.
+Net als bij Projecten worden de Vimeo-velden door een mens ingevuld. De content-producer laat ze op de leeg-waarde:
+```yaml
+heeft_vimeo_link: false
+vimeo_video_id: null
+vimeo_thumbnail: null
+```
 
-#### `vimeo_video_id`
-Zelfde regels (sectie 6).
-
-#### `vimeo_thumbnail`
-Zelfde regels (sectie 6). Verplicht als Vimeo aan staat.
+**Let op de naam-mapping in YAML:** in archief is de Webflow-slug `vimeo-video-player-zichtbaarheid` (niet `heeft-vimeo-link`), maar in je YAML gebruik je net als bij Projecten `heeft_vimeo_link`. De importeur vertaalt dit. Zie sectie 6 en 14.
 
 ### 8.3. Compleet voorbeeld: Archief
 
@@ -313,9 +334,9 @@ slug: projectnaam-x
 omschrijvende_zin: Korte zin die in 135 tekens omschrijft wat het project was.
 hero_afbeelding: hero.jpg
 meer_over_dit_project: https://www.externewebsite.nl
-heeft_vimeo_link: true
-vimeo_video_id: '1194370924'
-vimeo_thumbnail: vimeo-thumbnail.jpg
+heeft_vimeo_link: false
+vimeo_video_id: null
+vimeo_thumbnail: null
 ---
 
 # Hoofdtitel van het verhaal
@@ -341,7 +362,11 @@ Wat is er uit dit project voortgekomen? Concrete uitkomsten, geleerde lessen, ve
 
 ---
 
-## 9. Collectie: Highlights
+## 9. Collectie: Highlights — MENS-WERK (niet in deze import-ronde)
+
+> **Highlights worden volledig door een mens beheerd.** Het aanmaken van highlight-items én het koppelen ervan aan projecten gebeurt handmatig in Webflow, achteraf. De content-producer maakt in deze ronde **geen** `/highlights/`-folder en laat het `highlights`-veld op elk project op `null`.
+>
+> De onderstaande schema-beschrijving staat hier puur als referentie voor wanneer een mens (of een latere import-ronde) highlights wél gaat toevoegen.
 
 Highlights zijn losse momenten, gebeurtenissen, of beelden die je vanuit een project kunt referencen. Eén highlight kan door meerdere projecten worden gebruikt.
 
@@ -391,20 +416,25 @@ Lead Glocal positioneert zich als **rustige, beschouwende ecosysteem-consultancy
 | `name` | n.v.t. | Eigennaam, mag hoofdletters bevatten |
 | `omschrijvende_zin` | 1 | Noun-phrase of korte beschrijvende zin |
 | `uitdaging` | 1-2 | Context + gap-beschrijving |
-| `architect` | 1 | Actief werkwoord: "ontwierp", "definieerde" |
-| `bouwer` | 1 | Actief werkwoord: "bouwde", "bracht bijeen" |
-| `facilitator` | 1 | Actief werkwoord: "bewaakt", "begeleidt" |
+| `architect` | 1 frase | Gerund-vorm: "Het ontwerpen van ...", "Het in kaart brengen van ..." |
+| `bouwer` | 1 frase | Gerund-vorm: "Het bijeenbrengen van ...", "Het inrichten van ..." |
+| `facilitator` | 1 frase | Gerund-vorm: "Het bewaken van ...", "Het begeleiden van ..." |
 | `body` (archief) | meerdere paragrafen | Verhalend, met structuur via headings |
 
-### Voorbeeld-vergelijking
+### Rol-frasering: niet elke keer "Lead Glocal"
 
-**Goed:**
-> Lead Glocal ontwierp de structuur waarbinnen ondernemers, onderwijs en overheid samen werkten aan de energietransitie.
+De drie rollen staan onder elkaar op de project-pagina. Als ze alle drie met "Lead Glocal ..." beginnen, wordt het eentonig. Gebruik daarom de **gerund-vorm** ("Het [werkwoord]en van ...") die de werkzaamheid zelf beschrijft.
 
-**Niet goed:**
+**Goed (gevarieerd, gerund):**
+> **Architect** — Het ontwerpen van de structuur waarbinnen ondernemers, onderwijs en overheid samenwerken aan de energietransitie.
+> **Bouwer** — Het bijeenbrengen van partijen en het inrichten van de samenwerking zodat losse initiatieven als geheel gaan functioneren.
+> **Facilitator** — Het bewaken van de groei van het platform en zorgen dat STROOM blijft functioneren als zelfstandig, lerend ecosysteem.
+
+**Niet goed (repetitief):**
+> Lead Glocal ontwierp ... / Lead Glocal bracht ... / Lead Glocal bewaakt ...
+
+**Ook niet goed (superlatieven):**
 > Wij hebben met onze unieke aanpak een baanbrekend nieuw platform geleverd dat de energietransitie een enorme boost heeft gegeven.
-
-Verschil: het goede voorbeeld is feitelijk, actief, beschrijft een rol. Het slechte voorbeeld is vol superlatieven en niet meetbaar.
 
 ---
 
@@ -436,11 +466,12 @@ Voor je oplevert, controleer per project:
 - [ ] `meer_over_dit_project` begint met `https://` of `http://`.
 - [ ] `hero_afbeelding` bestand bestaat in de folder en is een geldig formaat.
 - [ ] `logo_avatar` (alleen Projecten) bestand bestaat en is bij voorkeur transparant PNG.
-- [ ] Als `heeft_vimeo_link: true`: `vimeo_video_id` én `vimeo_thumbnail` zijn beide gezet.
+- [ ] `highlights`, `coordinaat_voor_kaart_positie` en alle Vimeo-velden staan op `null` (mens-werk, sectie 2.5) — `heeft_vimeo_link: false`.
+- [ ] Geen `/highlights/`-folder aangemaakt (mens-werk).
 - [ ] Slug bevat alleen kleine letters, cijfers, streepjes.
 - [ ] YAML-frontmatter is valid (geen tabs voor indent, geen ontbrekende quotes bij speciale tekens).
 - [ ] Voor archief: body bevat geen tabellen, code-blocks, of complexe HTML.
-- [ ] Highlights die in `highlights:` van een project staan, bestaan ook als `/highlights/<slug>/highlight.md`.
+- [ ] Rol-velden (architect/bouwer/facilitator) zijn gerund-frases, beginnen niet met "Lead Glocal".
 
 ---
 
@@ -453,8 +484,9 @@ Een lijst van fouten die het hele import-proces kunnen breken of het design kapo
 - **Geen relatieve of absolute paden in image-referenties.** Alleen bestandsnaam (`hero.jpg`), niet `./hero.jpg` of `/path/to/hero.jpg`.
 - **Geen UTF-8 BOM of windows line endings** in markdown-bestanden. Gebruik LF-line-endings, UTF-8 zonder BOM.
 - **Geen content verzinnen.** Als je voor een project geen écht beeldmateriaal of geen waarheidsgetrouwe tekst hebt, lever dat project dan niet aan. Half ingevulde projecten leveren een slechte site op.
-- **Geen smileys, emoji's, of speciale tekens** in `name` of `slug` (in body van archief mag wel beperkt).
-- **Geen volledige Vimeo-URL** in `vimeo_video_id`. Alleen de numerieke ID.
+- **Nooit emoji's of smileys.** Niet in `name`, niet in `slug`, niet in `omschrijvende_zin`, niet in de rol-velden, en niet in de archief-body. Nergens. Geen enkele uitzondering.
+- **Geen Vimeo-, highlight- of kaartcoördinaat-waarden invullen.** Dit is mens-werk (sectie 2.5). Houd ze op `null` / `false`.
+- **Geen rol-velden die met "Lead Glocal" beginnen.** Gebruik de gerund-vorm (sectie 10).
 - **Geen `featured: true` zonder reden.** Te veel featured-projecten verwatert de homepagina.
 
 ---

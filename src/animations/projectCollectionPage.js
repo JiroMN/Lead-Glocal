@@ -483,6 +483,7 @@ function animateRoleValue(role, prevRole) {
 
 export function initImagesOnPathScroll() {
   const wrap = document.querySelector('[data-motionpath="wrap"]');
+  if (!wrap) return;
   const path = wrap.querySelector('[data-motionpath="path"]');
   const items = wrap.querySelectorAll('[data-motionpath="item"]');
   const itemDetails = wrap.querySelectorAll('[data-motionpath="item-details"]');
@@ -498,6 +499,11 @@ export function initImagesOnPathScroll() {
 
   if (oldTl) {
     progress = oldTl.progress();
+    // Kill the associated ScrollTrigger too — timeline.kill() leaves it
+    // alive. Without this, every resize stacks another pinned ScrollTrigger
+    // on the same wrap (doubling pin-spacing and corrupting scroll
+    // positions), which is exactly what makes resize misbehave.
+    oldTl.scrollTrigger?.kill();
     oldTl.progress(0).kill();
   }
 
@@ -555,13 +561,25 @@ export function initImagesOnPathScroll() {
   return tl;
 }
 
+// Effective sort date for a project = its manual start date if set,
+// otherwise Webflow's "Created on". The start date is the editorial
+// "when did this project run" value and is the primary key; created-on
+// is only a fallback so ordering never collapses when many items share
+// the same import timestamp (which is exactly what breaks when several
+// projects are created in one batch).
+function effectiveDate(startStr, createdStr) {
+  return parseWebflowDate(startStr) || parseWebflowDate(createdStr);
+}
+
 export function initNextProject() {
   const section = document.querySelector("[data-next-project]");
+  if (!section) return;
   const nextProjectLink = section.querySelector("[data-next-project-link]");
   const nextProjectTitle = section.querySelector("[data-next-project-title]");
   const nextProjectImage = section.querySelector("[data-next-project-image]");
 
-  const currentProjectCreationDate = parseWebflowDate(
+  const currentDate = effectiveDate(
+    section.dataset.currentProjectStartDate,
     section.dataset.currentProjectCreationDate,
   );
 
@@ -581,48 +599,47 @@ export function initNextProject() {
     });
   });
 
-  const projectItems = document.querySelectorAll("[data-project-item]");
-
-  let nextOlder = null;
-  let newest = null;
-
-  projectItems.forEach((project) => {
-    const creationDate = parseWebflowDate(project.dataset.projectCreationDate);
-    if (!creationDate) return;
+  // Collect candidates. The current project is already excluded from this
+  // hidden collection list in Webflow, so everything here is a valid "next".
+  const projects = [];
+  document.querySelectorAll("[data-project-item]").forEach((project) => {
+    const date = effectiveDate(
+      project.dataset.projectStartDate,
+      project.dataset.projectCreationDate,
+    );
+    if (!date) return;
 
     const imageEl = project.querySelector("[data-project-image]");
-    const data = {
+    projects.push({
       title: project.dataset.projectTitle,
       slug: project.dataset.projectSlug,
-      creationDate,
+      date,
       imageSrc: imageEl?.src,
       imageSrcset: imageEl?.srcset,
-    };
-
-    // Track the latest project overall (cycle fallback)
-    if (!newest || creationDate > newest.creationDate) {
-      newest = data;
-    }
-
-    // Track the next-older candidate
-    if (
-      currentProjectCreationDate &&
-      creationDate < currentProjectCreationDate &&
-      (!nextOlder || creationDate > nextOlder.creationDate)
-    ) {
-      nextOlder = data;
-    }
+    });
   });
+  if (!projects.length) return;
 
-  // Prefer the next-older project; if none exists (current is oldest),
-  // cycle to the newest project so the section always has something.
-  const next = nextOlder || newest;
+  // Newest → oldest, with slug as a deterministic tiebreaker so equal dates
+  // never flip-flop between page loads.
+  projects.sort((a, b) => b.date - a.date || a.slug.localeCompare(b.slug));
+
+  // "Next project" = the next-older one relative to the current project.
+  // After the descending sort, the first project strictly older than the
+  // current date IS the immediately-older one. If none exists (current is
+  // the oldest, or its date is unknown), cycle back to the newest.
+  const next =
+    (currentDate && projects.find((p) => p.date < currentDate)) || projects[0];
   if (!next) return;
 
   nextProjectLink.setAttribute("href", next.slug);
   if (nextProjectTitle) nextProjectTitle.textContent = next.title;
   if (nextProjectImage && next.imageSrc) {
+    // Always assign srcset — even when empty. A responsive <img> prefers
+    // srcset over src, so leaving a stale srcset in place keeps the PREVIOUS
+    // project's image on screen even though src was updated. Clearing it
+    // (set to "") forces the browser to fall back to the freshly-set src.
+    nextProjectImage.srcset = next.imageSrcset || "";
     nextProjectImage.src = next.imageSrc;
-    if (next.imageSrcset) nextProjectImage.srcset = next.imageSrcset;
   }
 }

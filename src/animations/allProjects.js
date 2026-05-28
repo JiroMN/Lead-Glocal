@@ -26,7 +26,7 @@ export function prepAllProjectsPage(next) {
   //   Tier 1 — priority featured (Lead Glocal's top picks)
   //   Tier 2 — featured on homepage
   //   Tier 3 — everything else
-  // Within each tier: creation date, newest first.
+  // Within each tier: effective date, newest first (see below).
   if (projectCollection && archiveCollection) {
     const archiveItems = archiveCollection.querySelectorAll(
       "[data-projects-grid-item]",
@@ -39,6 +39,14 @@ export function prepAllProjectsPage(next) {
       return 2;
     }
 
+    // Effective date = manual start date if set, else Webflow's "Created on".
+    // Mirrors the next-project logic in projectCollectionPage.js so the grid
+    // order and the "next project" cycling stay in agreement, and so a batch
+    // of items sharing one import timestamp doesn't collapse the ordering.
+    const effectiveDate = (el) =>
+      parseWebflowDate(el.dataset.startDate) ||
+      parseWebflowDate(el.dataset.creationDate);
+
     const sorted = [
       ...projectCollection.querySelectorAll("[data-projects-grid-item]"),
     ].sort((a, b) => {
@@ -46,8 +54,8 @@ export function prepAllProjectsPage(next) {
       const tb = tier(b);
       if (ta !== tb) return ta - tb;
 
-      const da = parseWebflowDate(a.dataset.creationDate);
-      const db = parseWebflowDate(b.dataset.creationDate);
+      const da = effectiveDate(a);
+      const db = effectiveDate(b);
       if (!da) return 1;
       if (!db) return -1;
       return db - da;
@@ -115,7 +123,7 @@ function initAllProjectsHero() {
       // OUT — top-to-bottom: top inset groeit, top verdwijnt eerst.
       .to(gridItems, {
         clipPath: "inset(100% 0 0 0)",
-        stagger: 0.05,
+        stagger: { amount: 0.4 },
       })
       // Hele grid-item uit de flow → grid reflowt, geen lege cellen.
       .set(gridItems, {
@@ -135,7 +143,7 @@ function initAllProjectsHero() {
       // IN — top-to-bottom: bottom inset schrinkt, top verschijnt eerst.
       .to(filteredItems, {
         clipPath: "inset(0% 0% 0% 0%)",
-        stagger: 0.05,
+        stagger: { amount: 0.4 },
       });
   }
 
