@@ -1,11 +1,9 @@
-export function getVariableValue(variableName) {
+export function getVariableValue(variableName, el = document.documentElement) {
   if (!variableName) {
     throw new Error("getVariableValue requires a CSS variable name.");
   }
 
-  const value = getComputedStyle(document.documentElement).getPropertyValue(
-    variableName,
-  );
+  const value = getComputedStyle(el).getPropertyValue(variableName);
 
   const trimmed = value.trim();
 
@@ -100,10 +98,30 @@ export function parseWebflowDate(str) {
 
   const [, monthName, day, year, hour, minute] = match;
   const months = {
-    january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
-    july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
-    jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, aug: 7,
-    sep: 8, sept: 8, oct: 9, nov: 10, dec: 11,
+    january: 0,
+    february: 1,
+    march: 2,
+    april: 3,
+    may: 4,
+    june: 5,
+    july: 6,
+    august: 7,
+    september: 8,
+    october: 9,
+    november: 10,
+    december: 11,
+    jan: 0,
+    feb: 1,
+    mar: 2,
+    apr: 3,
+    jun: 5,
+    jul: 6,
+    aug: 7,
+    sep: 8,
+    sept: 8,
+    oct: 9,
+    nov: 10,
+    dec: 11,
   };
   const monthIdx = months[monthName.toLowerCase()];
   if (monthIdx === undefined) return null;

@@ -49,11 +49,13 @@ export function prepProjectInDepth(current, next) {
     const headingSplit = SplitText.create(heading, {
       type: "lines",
       mask: "lines",
+      autoSplit: true,
       linesClass: "__padded-mask",
     });
     const descriptionSplit = SplitText.create(description, {
       type: "lines",
       mask: "lines",
+      autoSplit: true,
     });
 
     gsap.set([headingSplit.lines, descriptionSplit.lines], { yPercent: 101 });

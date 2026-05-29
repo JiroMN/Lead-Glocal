@@ -23,14 +23,10 @@ export function initScalingNavigation() {
     mask: "lines",
   });
 
-  // const BASE_WIDTH = "10em"; // Base width of nav menu
-  // const TARGET_WIDTH = "18em"; // Target width of nav menu
-
-  const BASE_WIDTH = getVariableValue("--_elements---menu--base-width");
-  const TARGET_WIDTH = getVariableValue("--_elements---menu--target-width");
-
-  console.log("BASE_WIDTH:", BASE_WIDTH);
-  console.log("TARGET_WIDTH:", TARGET_WIDTH);
+  const BASE_WIDTH =
+    getVariableValue("--_elements---menu--base-width", navElement) || "10em"; // Base width of nav menu
+  const TARGET_WIDTH =
+    getVariableValue("--_elements---menu--target-width", navElement) || "18em"; // Target width of nav menu
 
   function animateOpen() {
     const tl = gsap.timeline();
@@ -124,10 +120,17 @@ export function initScalingNavigation() {
 
   const toggleNav = () => (isActive() ? closeNav() : openNav());
 
-  // Toggle buttons
+  const canHover = window.matchMedia(
+    "(hover: hover) and (pointer: fine)",
+  ).matches;
+
   document.querySelectorAll('[data-nav-toggle="toggle"]').forEach((btn) => {
-    btn.addEventListener("mouseenter", toggleNav);
-    btn.addEventListener("mouseleave", closeNav);
+    if (canHover) {
+      btn.addEventListener("mouseenter", toggleNav);
+      btn.addEventListener("mouseleave", closeNav);
+    } else {
+      btn.addEventListener("click", toggleNav);
+    }
   });
 
   // Close buttons
@@ -135,19 +138,23 @@ export function initScalingNavigation() {
     btn.addEventListener("click", closeNav);
   });
 
-  // Hover effect for links
-  const allLinks = [...navLinks, ...navExternals];
-  allLinks.forEach((link) => {
-    link.addEventListener("mouseenter", () => {
-      gsap.to(
-        allLinks.filter((l) => l !== link),
-        { autoAlpha: 0.5 },
-      );
+  // Hover effect for links — dim the others while hovering one. Only wired
+  // on hover-capable devices: on touch, mouseleave is unreliable so a dimmed
+  // link would stay dimmed after tapping.
+  if (canHover) {
+    const allLinks = [...navLinks, ...navExternals];
+    allLinks.forEach((link) => {
+      link.addEventListener("mouseenter", () => {
+        gsap.to(
+          allLinks.filter((l) => l !== link),
+          { autoAlpha: 0.5 },
+        );
+      });
+      link.addEventListener("mouseleave", () => {
+        gsap.to(allLinks, { autoAlpha: 1 });
+      });
     });
-    link.addEventListener("mouseleave", () => {
-      gsap.to(allLinks, { autoAlpha: 1 });
-    });
-  });
+  }
 
   // ESC closes
   document.addEventListener("keydown", (e) => {
