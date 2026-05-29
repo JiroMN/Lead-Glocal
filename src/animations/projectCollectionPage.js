@@ -247,7 +247,6 @@ let isPinActive = false;
 let listenersAttached = false;
 let lastWheelTime = 0;
 let touchStartY = 0;
-let touchConsumed = false; // one step per touch gesture (reset on lift)
 
 function tryStep(direction) {
   if (isAnimLocked || !isPinActive) return;
@@ -274,42 +273,17 @@ function releasePin(direction) {
 
   isPinActive = false;
   detachListeners();
-  // Remove the hard lock before scrolling past — otherwise overflow:hidden
-  // would block the scrollTo.
-  unlockScroll();
 
   const lenis = window.lenis;
   const targetY = direction > 0 ? st.end + 1 : st.start - 1;
 
   requestAnimationFrame(() => {
     if (lenis?.scrollTo) {
-      // Resume Lenis first — activate() stopped it. Without start() the
-      // scrollTo can't run and the page would stay frozen after the pin.
-      lenis.start();
       lenis.scrollTo(targetY, { duration: 0.3 });
     } else {
       window.scrollTo({ top: targetY, behavior: "smooth" });
     }
   });
-}
-
-// Hard scroll-lock for the pinned section.
-//   • touch-action: none  → the browser stops handling touch as scroll, so a
-//     native momentum fling can't advance the page. Touch EVENTS still fire,
-//     so the gesture handler can still read swipe deltas to step roles.
-//   • overflow: hidden    → halts any in-flight native momentum and freezes
-//     the scroll position (the scrollbar thumb stops dead).
-// Applied on <html>; paired with lenis.stop() for the wheel/desktop side.
-function lockScroll() {
-  const html = document.documentElement;
-  html.style.overflow = "hidden";
-  html.style.touchAction = "none";
-}
-
-function unlockScroll() {
-  const html = document.documentElement;
-  html.style.overflow = "";
-  html.style.touchAction = "";
 }
 
 function activate() {
@@ -322,14 +296,6 @@ function activate() {
   // scroll fall inside the BURST_END_MS window and get ignored.
   lastWheelTime = Date.now();
   touchStartY = -1;
-  touchConsumed = false;
-
-  // Hard-freeze the scroll while the pin is active. Desktop relies on the
-  // wheel preventDefault, but touch needs a real lock: native momentum after
-  // a finger-lift can't be preventDefault'd, so we kill it with overflow +
-  // touch-action and stop Lenis for the wheel side.
-  window.lenis?.stop();
-  lockScroll();
 
   attachListeners();
 }
@@ -338,10 +304,6 @@ function deactivate() {
   if (!isPinActive) return;
   isPinActive = false;
   detachListeners();
-  // Safety net: never leave the scroll frozen if we leave the pin via a
-  // path other than releasePin (e.g. a ScrollTrigger refresh/onLeaveBack).
-  unlockScroll();
-  window.lenis?.start();
 }
 
 function onWheel(e) {
@@ -378,31 +340,19 @@ function onWheel(e) {
 function onTouchStart(e) {
   if (!isPinActive) return;
   touchStartY = e.touches[0].clientY;
-  touchConsumed = false; // fresh gesture → may trigger one step
 }
 
 function onTouchMove(e) {
   if (!isPinActive) return;
   e.preventDefault();
-
-  // Mirror the wheel handler: respond DURING the gesture, not on lift.
-  // Bail if this is the entering gesture (touchStartY reset to -1 on
-  // activate), if we already stepped this gesture, or mid-animation.
-  if (touchStartY < 0 || touchConsumed || isAnimLocked) return;
-
-  const deltaY = touchStartY - e.touches[0].clientY;
-  if (Math.abs(deltaY) < TOUCH_THRESHOLD_PX) return;
-
-  // One step per touch — locked until the finger lifts (onTouchEnd).
-  touchConsumed = true;
-  tryStep(deltaY > 0 ? 1 : -1);
 }
 
-function onTouchEnd() {
+function onTouchEnd(e) {
   if (!isPinActive) return;
-  // Reset so the next finger-down starts a fresh gesture.
-  touchStartY = -1;
-  touchConsumed = false;
+  if (touchStartY < 0) return;
+  const deltaY = touchStartY - e.changedTouches[0].clientY;
+  if (Math.abs(deltaY) < TOUCH_THRESHOLD_PX) return;
+  tryStep(deltaY > 0 ? 1 : -1);
 }
 
 function onKey(e) {

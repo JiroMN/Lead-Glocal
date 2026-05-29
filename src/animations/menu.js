@@ -1,3 +1,5 @@
+import { getVariableValue } from "../utils/helpers";
+
 export function initScalingNavigation() {
   const navElement = document.querySelector("[data-nav-menu]");
   const navStatusEl = document.querySelector("[data-nav-status]");
@@ -21,8 +23,14 @@ export function initScalingNavigation() {
     mask: "lines",
   });
 
-  const BASE_WIDTH = "10em"; // Base width of nav menu
-  const TARGET_WIDTH = "18em"; // Target width of nav menu
+  // const BASE_WIDTH = "10em"; // Base width of nav menu
+  // const TARGET_WIDTH = "18em"; // Target width of nav menu
+
+  const BASE_WIDTH = getVariableValue("--_elements---menu--base-width");
+  const TARGET_WIDTH = getVariableValue("--_elements---menu--target-width");
+
+  console.log("BASE_WIDTH:", BASE_WIDTH);
+  console.log("TARGET_WIDTH:", TARGET_WIDTH);
 
   function animateOpen() {
     const tl = gsap.timeline();
