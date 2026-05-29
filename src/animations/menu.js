@@ -134,13 +134,11 @@ export function initScalingNavigation() {
   });
 
   // Close buttons
+
   document.querySelectorAll('[data-nav-toggle="close"]').forEach((btn) => {
     btn.addEventListener("click", closeNav);
   });
 
-  // Hover effect for links — dim the others while hovering one. Only wired
-  // on hover-capable devices: on touch, mouseleave is unreliable so a dimmed
-  // link would stay dimmed after tapping.
   if (canHover) {
     const allLinks = [...navLinks, ...navExternals];
     allLinks.forEach((link) => {
@@ -159,5 +157,13 @@ export function initScalingNavigation() {
   // ESC closes
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && isActive()) closeNav();
+  });
+
+  // Click Outside to close
+  document.addEventListener("click", (e) => {
+    if (!isActive()) return;
+    if (navElement.contains(e.target)) return;
+    if (e.target.closest('[data-nav-toggle="toggle"]')) return;
+    closeNav();
   });
 }
