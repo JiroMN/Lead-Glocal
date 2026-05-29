@@ -247,6 +247,7 @@ let isPinActive = false;
 let listenersAttached = false;
 let lastWheelTime = 0;
 let touchStartY = 0;
+let touchConsumed = false; // one step per touch gesture (reset on lift)
 
 function tryStep(direction) {
   if (isAnimLocked || !isPinActive) return;
@@ -296,6 +297,7 @@ function activate() {
   // scroll fall inside the BURST_END_MS window and get ignored.
   lastWheelTime = Date.now();
   touchStartY = -1;
+  touchConsumed = false;
 
   attachListeners();
 }
@@ -340,19 +342,31 @@ function onWheel(e) {
 function onTouchStart(e) {
   if (!isPinActive) return;
   touchStartY = e.touches[0].clientY;
+  touchConsumed = false; // fresh gesture → may trigger one step
 }
 
 function onTouchMove(e) {
   if (!isPinActive) return;
   e.preventDefault();
+
+  // Mirror the wheel handler: respond DURING the gesture, not on lift.
+  // Bail if this is the entering gesture (touchStartY reset to -1 on
+  // activate), if we already stepped this gesture, or mid-animation.
+  if (touchStartY < 0 || touchConsumed || isAnimLocked) return;
+
+  const deltaY = touchStartY - e.touches[0].clientY;
+  if (Math.abs(deltaY) < TOUCH_THRESHOLD_PX) return;
+
+  // One step per touch — locked until the finger lifts (onTouchEnd).
+  touchConsumed = true;
+  tryStep(deltaY > 0 ? 1 : -1);
 }
 
-function onTouchEnd(e) {
+function onTouchEnd() {
   if (!isPinActive) return;
-  if (touchStartY < 0) return;
-  const deltaY = touchStartY - e.changedTouches[0].clientY;
-  if (Math.abs(deltaY) < TOUCH_THRESHOLD_PX) return;
-  tryStep(deltaY > 0 ? 1 : -1);
+  // Reset so the next finger-down starts a fresh gesture.
+  touchStartY = -1;
+  touchConsumed = false;
 }
 
 function onKey(e) {
