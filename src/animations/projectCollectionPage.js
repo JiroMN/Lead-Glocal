@@ -274,6 +274,9 @@ function releasePin(direction) {
 
   isPinActive = false;
   detachListeners();
+  // Remove the hard lock before scrolling past — otherwise overflow:hidden
+  // would block the scrollTo.
+  unlockScroll();
 
   const lenis = window.lenis;
   const targetY = direction > 0 ? st.end + 1 : st.start - 1;
@@ -290,6 +293,25 @@ function releasePin(direction) {
   });
 }
 
+// Hard scroll-lock for the pinned section.
+//   • touch-action: none  → the browser stops handling touch as scroll, so a
+//     native momentum fling can't advance the page. Touch EVENTS still fire,
+//     so the gesture handler can still read swipe deltas to step roles.
+//   • overflow: hidden    → halts any in-flight native momentum and freezes
+//     the scroll position (the scrollbar thumb stops dead).
+// Applied on <html>; paired with lenis.stop() for the wheel/desktop side.
+function lockScroll() {
+  const html = document.documentElement;
+  html.style.overflow = "hidden";
+  html.style.touchAction = "none";
+}
+
+function unlockScroll() {
+  const html = document.documentElement;
+  html.style.overflow = "";
+  html.style.touchAction = "";
+}
+
 function activate() {
   if (isPinActive) return;
   isPinActive = true;
@@ -302,12 +324,12 @@ function activate() {
   touchStartY = -1;
   touchConsumed = false;
 
-  // Hard-freeze the scroll while the pin is active. On desktop the wheel
-  // preventDefault already blocks scrolling, but on touch the native (or
-  // Lenis) fling needs an explicit stop — otherwise a fast flick carries
-  // momentum straight through the pin. Paired with syncTouch:true on Lenis,
-  // this freezes the scrollbar fully on mobile too.
+  // Hard-freeze the scroll while the pin is active. Desktop relies on the
+  // wheel preventDefault, but touch needs a real lock: native momentum after
+  // a finger-lift can't be preventDefault'd, so we kill it with overflow +
+  // touch-action and stop Lenis for the wheel side.
   window.lenis?.stop();
+  lockScroll();
 
   attachListeners();
 }
@@ -318,6 +340,7 @@ function deactivate() {
   detachListeners();
   // Safety net: never leave the scroll frozen if we leave the pin via a
   // path other than releasePin (e.g. a ScrollTrigger refresh/onLeaveBack).
+  unlockScroll();
   window.lenis?.start();
 }
 
