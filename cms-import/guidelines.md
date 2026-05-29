@@ -231,9 +231,26 @@ Als `true`: project verschijnt op de homepagina (max 8 worden getoond). Wordt oo
 - **Richtlijn:** alleen `true` voor de actuele, meest representatieve projecten (max 8).
 
 #### `featured_priority` (Switch / Boolean)
-Alleen relevant als `featured: true`. Als `true`: project staat vooraan in de rij. Bij meerdere prioriteits-projecten wordt op creatiedatum gesorteerd.
+Alleen relevant als `featured: true`. Als `true`: project staat vooraan in de rij. Bij meerdere prioriteits-projecten wordt daarbinnen op **startdatum** gesorteerd (nieuwste eerst), en pas als laatste op creatiedatum.
 - **Default:** `false`
 - **Richtlijn:** spaarzaam gebruiken (1-3 projecten max). Voor projecten die je echt eerst wil tonen.
+
+#### `startdatum` (DateTime) — optioneel, maar STERK aanbevolen
+De datum waarop het project daadwerkelijk **van start ging** — niet de datum waarop het CMS-item is aangemaakt. Dit veld bepaalt de chronologische volgorde waarin projecten getoond worden.
+
+- **Frontmatter waarde:** datum in `YYYY-MM-DD` formaat (bv. `2024-03-05`). Tijd is niet nodig.
+- **Webflow veld:** mapt naar de slug `start-datum` (zie sectie 14).
+- **Optioneel?** Technisch wel. **Maar bij een import sterk aanbevolen.** Reden: Webflow's automatische "Created on" is voor álle in één batch geïmporteerde projecten (bijna) hetzelfde moment. Zonder startdatum vallen ze daarop terug, delen ze dezelfde datum, en klapt de volgorde in elkaar (willekeurige ties). Een echte startdatum geeft elk project een unieke, betekenisvolle plek in de tijdlijn.
+- **Leeg laten mag** (`startdatum: null`) — dan valt de sortering voor dat project terug op de aanmaakdatum (Created on).
+
+**Rol in de sortering.** Projecten worden in deze volgorde geordend, zowel op de homepage als op de Alle Projecten-pagina:
+
+1. **Featured Priority** (top picks) — bovenaan
+2. **Featured** (op de homepage) — daarna
+3. **Startdatum** — binnen elke groep, nieuwste eerst
+4. **Created on** — alleen als fallback wanneer er geen startdatum is
+
+Dus: `featured_priority` en `featured` bepalen de "lagen", en binnen elke laag is de **startdatum** leidend. De creatiedatum komt pas in beeld als een project geen startdatum heeft.
 
 #### `highlights` (MultiReference → Highlights collectie) — MENS-WERK
 Het koppelen van highlights aan een project is een redactionele keuze die een mens later handmatig in Webflow maakt. **De content-producer laat dit altijd op `null`.** Zie sectie 2.5.
@@ -270,6 +287,7 @@ bouwer: Het bijeenbrengen van partijen en het inrichten van de samenwerking zoda
 facilitator: Het bewaken van de groei van het platform en zorgen dat STROOM blijft functioneren als zelfstandig, lerend ecosysteem.
 featured: true
 featured_priority: true
+startdatum: 2025-06-15
 highlights: null
 coordinaat_voor_kaart_positie: null
 heeft_vimeo_link: false
@@ -278,7 +296,7 @@ vimeo_thumbnail: null
 ---
 ```
 
-> Let op: `highlights`, `coordinaat_voor_kaart_positie` en de Vimeo-velden staan bewust op `null` — dat is mens-werk (sectie 2.5).
+> Let op: `startdatum` is hier ingevuld met de échte startdatum van het project (sterk aanbevolen). `highlights`, `coordinaat_voor_kaart_positie` en de Vimeo-velden staan bewust op `null` — dat is mens-werk (sectie 2.5).
 
 Geen body. Project-detailpagina bouwt zichzelf op uit de bovenstaande velden via het Webflow-template.
 
@@ -287,6 +305,8 @@ Geen body. Project-detailpagina bouwt zichzelf op uit de bovenstaande velden via
 ## 8. Collectie: Archief Projecten
 
 Archief is voor oudere projecten. Eenvoudiger structuur: geen architect/bouwer/facilitator uitsplitsing, wel een rich-text body waar het verhaal vrij verteld kan worden.
+
+> **Geen startdatum bij archief.** De Archief Projecten-collectie heeft (nog) geen `startdatum`-veld. Archief-items worden in het gemengde grid op de Alle Projecten-pagina geordend op hun aanmaakdatum (Created on). Voeg dus géén `startdatum` toe aan archief-frontmatter — die wordt genegeerd.
 
 ### 8.1. Velden — verplicht
 
@@ -466,6 +486,7 @@ Voor je oplevert, controleer per project:
 - [ ] `meer_over_dit_project` begint met `https://` of `http://`.
 - [ ] `hero_afbeelding` bestand bestaat in de folder en is een geldig formaat.
 - [ ] `logo_avatar` (alleen Projecten) bestand bestaat en is bij voorkeur transparant PNG.
+- [ ] `startdatum` is gevuld met de échte projectstartdatum (`YYYY-MM-DD`) waar bekend; alleen `null` als de startdatum écht onbekend is.
 - [ ] `highlights`, `coordinaat_voor_kaart_positie` en alle Vimeo-velden staan op `null` (mens-werk, sectie 2.5) — `heeft_vimeo_link: false`.
 - [ ] Geen `/highlights/`-folder aangemaakt (mens-werk).
 - [ ] Slug bevat alleen kleine letters, cijfers, streepjes.
@@ -511,6 +532,7 @@ Voor de importeur — exacte mapping van frontmatter-veldnaam naar Webflow CMS s
 | `facilitator` | `manager` ⚠️ | PlainText |
 | `featured` | `featured` | Switch |
 | `featured_priority` | `featured-priority` | Switch |
+| `startdatum` | `start-datum` ⚠️ | DateTime |
 | `highlights` | `highlights` | MultiReference |
 | `coordinaat_voor_kaart_positie` | `coordinaat-voor-kaart-positie` | Number |
 | `heeft_vimeo_link` | `heeft-vimeo-link` | Switch |
