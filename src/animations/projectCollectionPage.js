@@ -280,6 +280,9 @@ function releasePin(direction) {
 
   requestAnimationFrame(() => {
     if (lenis?.scrollTo) {
+      // Resume Lenis first — activate() stopped it. Without start() the
+      // scrollTo can't run and the page would stay frozen after the pin.
+      lenis.start();
       lenis.scrollTo(targetY, { duration: 0.3 });
     } else {
       window.scrollTo({ top: targetY, behavior: "smooth" });
@@ -299,6 +302,13 @@ function activate() {
   touchStartY = -1;
   touchConsumed = false;
 
+  // Hard-freeze the scroll while the pin is active. On desktop the wheel
+  // preventDefault already blocks scrolling, but on touch the native (or
+  // Lenis) fling needs an explicit stop — otherwise a fast flick carries
+  // momentum straight through the pin. Paired with syncTouch:true on Lenis,
+  // this freezes the scrollbar fully on mobile too.
+  window.lenis?.stop();
+
   attachListeners();
 }
 
@@ -306,6 +316,9 @@ function deactivate() {
   if (!isPinActive) return;
   isPinActive = false;
   detachListeners();
+  // Safety net: never leave the scroll frozen if we leave the pin via a
+  // path other than releasePin (e.g. a ScrollTrigger refresh/onLeaveBack).
+  window.lenis?.start();
 }
 
 function onWheel(e) {

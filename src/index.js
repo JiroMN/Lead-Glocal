@@ -592,6 +592,12 @@ function initLenis() {
   lenis = new Lenis({
     lerp: 0.165,
     wheelMultiplier: 1.25,
+    // Let Lenis drive touch scrolling too. Without this, touch uses native
+    // momentum that can't be intercepted after the finger lifts — so a fast
+    // flick blows straight through the project-roles pin. With syncTouch the
+    // fling is Lenis-driven (cancelable), so lenis.stop() in the pin's
+    // activate() actually freezes it.
+    syncTouch: true,
   });
 
   // Expose for other modules that need to lock/unlock scroll programmatically
