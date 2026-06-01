@@ -149,6 +149,18 @@ export function setEcosystemGraphState(name) {
 
 // ---- Internal --------------------------------------------------------------
 
+// Stretch a 0–1 fraction outward from the center (0.5) by a multiplier.
+//   factor = 1   → no change (current behaviour)
+//   factor > 1   → push the point further from center (used on narrow
+//                  containers so the graph spreads instead of becoming
+//                  elongated)
+//   factor < 1   → pull tighter around center
+// The factor is read per-breakpoint from CSS vars on the wrap; see
+// readSpread() in createGraph.
+function stretch(fraction, factor) {
+  return 0.5 + (fraction - 0.5) * factor;
+}
+
 function createGraph(wrap) {
   const nodes = Array.from(
     wrap.querySelectorAll("[data-ecosystem-graph-node]"),
@@ -183,6 +195,11 @@ function createGraph(wrap) {
   let transitioning = false;
   let wrapW = 0;
   let wrapH = 0;
+  // Breakpoint-driven node-spread multipliers. Updated by readSpread() on
+  // every layout. 1 = no stretch (default, matches old behaviour). >1 pushes
+  // nodes outward from center so a narrow wrap doesn't squash the x-axis.
+  let spreadX = 1;
+  let spreadY = 1;
 
   // Paths are built ONCE at init using the constant LINES array. Per state we
   // only animate their stroke-width and opacity; the connections themselves
@@ -238,8 +255,8 @@ function createGraph(wrap) {
       // Clear inertia lock — `overwrite: true` below kills any in-flight
       // inertia tween, but its onComplete won't fire, so we'd leak the lock.
       node.__inertiaActive = false;
-      const targetX = pos.x * wrapW;
-      const targetY = pos.y * wrapH;
+      const targetX = stretch(pos.x, spreadX) * wrapW;
+      const targetY = stretch(pos.y, spreadY) * wrapH;
       if (duration === 0) {
         gsap.set(node, { x: targetX, y: targetY });
       } else {
@@ -285,7 +302,37 @@ function createGraph(wrap) {
     const r = wrap.getBoundingClientRect();
     wrapW = r.width;
     wrapH = r.height;
+    readSpread();
     if (currentState) applyState(currentState, 0);
+  }
+
+  // Read the spread multipliers from CSS vars scoped to the wrap. Webflow
+  // Variables only support size-units (px, em, …) — `parseFloat` strips the
+  // unit and gives us the bare number we use as a multiplier (e.g. "1.15px"
+  // → 1.15). Falls back to 1 if the variable is missing or invalid.
+  //
+  // Logged on every layout so you can verify in DevTools that the values
+  // actually change as the viewport crosses a breakpoint. If the log keeps
+  // showing the same numbers when you resize past a breakpoint, the variable
+  // overrides aren't being emitted — see comments below the function for the
+  // fallback (custom-CSS embed).
+  function readSpread() {
+    const sxRaw = getVariableValue(
+      "--_elements---ecosystem-graph--spread-x",
+      wrap,
+    );
+    const syRaw = getVariableValue(
+      "--_elements---ecosystem-graph--spread-y",
+      wrap,
+    );
+    const sx = parseFloat(sxRaw);
+    const sy = parseFloat(syRaw);
+    spreadX = isFinite(sx) && sx > 0 ? sx : 1;
+    spreadY = isFinite(sy) && sy > 0 ? sy : 1;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ecosystem-graph] viewport ${window.innerWidth}px → spread x:${spreadX} y:${spreadY} (raw x:"${sxRaw}" y:"${syRaw}")`,
+    );
   }
 
   // Per-frame path rendering. Reads each node's current bounding box and
@@ -438,8 +485,8 @@ function createGraph(wrap) {
           const pos = STATES[currentState]?.nodes[i];
           if (!pos) return;
           gsap.to(node, {
-            x: pos.x * wrapW,
-            y: pos.y * wrapH,
+            x: stretch(pos.x, spreadX) * wrapW,
+            y: stretch(pos.y, spreadY) * wrapH,
             duration: 1.2,
             ease: "elastic.out(1, 0.6)",
             // No lock callbacks — lock is already cleared. A fresh inertia

@@ -29,6 +29,11 @@ export function initServices() {
   const section = document.querySelector("[data-services]");
   if (!section) return;
 
+  // for accessibility, since the text is visually masked
+  section
+    .querySelectorAll("[data-services-role-top-subtext]")
+    .forEach((subText) => (subText.title = subText.textContent));
+
   const loopOrder = ["architect", "builder", "manager"];
   let currentRole = null;
   // The active tab's progress tween IS the autoplay timer — when it
@@ -51,11 +56,7 @@ export function initServices() {
     // the DOM. After Barba navigates away, the autoplay tween keeps ticking
     // (it's a regular GSAP tween, not a ScrollTrigger), so without this
     // guard it would keep flipping the project page's ecosystem graph state.
-    if (
-      !document.querySelector(
-        "[data-wf--ecosystem-graph--variant='base']",
-      )
-    )
+    if (!document.querySelector("[data-wf--ecosystem-graph--variant='base']"))
       return;
 
     const idx = loopOrder.indexOf(currentRole);
