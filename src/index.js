@@ -113,6 +113,8 @@ function initBeforeEnterFunctions(current, next) {
   if (has("[data-project-hero")) prepProjectInDepth(current, next);
   if (has("[data-projects-hero]")) prepAllProjectsPage(next);
   if (has("[data-404]")) prep404(next);
+
+  if (layoutManager) layoutManager.refresh();
 }
 
 function initAfterEnterFunctions(next) {

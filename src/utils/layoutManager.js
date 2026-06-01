@@ -1,5 +1,11 @@
 // This needs to have layoutManager.js installed in the project for this to work
 export function initLayoutManager() {
+  if (!layoutManager) {
+    console.warn(
+      "layoutManager not found. Please ensure layoutManager.js is included in the project.",
+    );
+    return;
+  }
   layoutManager.teleport([
     {
       element: "[data-ecosystems-map-wrap]",
