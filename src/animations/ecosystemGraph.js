@@ -439,8 +439,15 @@ function createGraph(wrap) {
   const MAX_SPEED = 5000; // cap mouse velocity so flicks don't fling nodes off
   const VELOCITY_SCALE = 0.1; // how much of mouse velocity transfers to nodes
   const RESISTANCE = 1300; // higher = stops sooner = shorter push distance
-  // Click shockwave tuning.
-  const SHOCKWAVE_FORCE = 1400; // px/s outward velocity at the epicenter
+  // Click shockwave tuning. Touch taps land directly ON nodes (you aim at a
+  // target), so the epicenter gets full force far more often than a desktop
+  // click in the general area — which made a dead-center tap fling a node
+  // clean off a small screen. Use a much gentler force on coarse-pointer
+  // (touch) devices; desktop stays as-is.
+  const isCoarsePointer =
+    typeof window !== "undefined" &&
+    window.matchMedia("(pointer: coarse)").matches;
+  const SHOCKWAVE_FORCE = isCoarsePointer ? 550 : 1400; // px/s outward at epicenter
   const SHOCKWAVE_RADIUS = 450; // px: nodes beyond this aren't pushed
   let lastX = 0;
   let lastY = 0;
