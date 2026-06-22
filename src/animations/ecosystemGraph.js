@@ -367,10 +367,7 @@ function createGraph(wrap) {
         if (p.direction === 1 && p.progress >= PULSE_ANTICIPATION) {
           pulseNode(LINES[p.lineIdx][1]);
           p.pulsed = true;
-        } else if (
-          p.direction === -1 &&
-          p.progress <= 1 - PULSE_ANTICIPATION
-        ) {
+        } else if (p.direction === -1 && p.progress <= 1 - PULSE_ANTICIPATION) {
           pulseNode(LINES[p.lineIdx][0]);
           p.pulsed = true;
         }
@@ -447,8 +444,8 @@ function createGraph(wrap) {
   const isCoarsePointer =
     typeof window !== "undefined" &&
     window.matchMedia("(pointer: coarse)").matches;
-  const SHOCKWAVE_FORCE = isCoarsePointer ? 550 : 1400; // px/s outward at epicenter
-  const SHOCKWAVE_RADIUS = 450; // px: nodes beyond this aren't pushed
+  const SHOCKWAVE_FORCE = isCoarsePointer ? 800 : 1400; // px/s outward at epicenter
+  const SHOCKWAVE_RADIUS = 500; // px: nodes beyond this aren't pushed
   let lastX = 0;
   let lastY = 0;
   let lastT = 0;
