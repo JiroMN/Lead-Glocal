@@ -425,18 +425,63 @@ function createGraph(wrap) {
   const resizeObserver = new ResizeObserver(layout);
   resizeObserver.observe(wrap);
 
-  // ---- Inertia on mouse proximity ------------------------------------------
-  // When the mouse moves fast near a node, push it away with momentum and
-  // elastic-return to the current state's target position.
-  // Disabled during state-transition windows to avoid target conflicts.
+  // ---- Inertia: mouse proximity + click shockwave --------------------------
+  // Two ways to push nodes, both funnelling through pushNode() so the momentum
+  // + lock + elastic-return logic lives in ONE place:
+  //   • onMove  — fast mouse movement near a node flings it (desktop hover).
+  //   • onPress — a click/tap radiates a shockwave from the point, pushing
+  //               every nearby node outward. Gives touch devices a real
+  //               interaction, since they have no hover/inertia.
+  // Both are disabled during state-transition windows to avoid target
+  // conflicts with the role animation.
   const THRESHOLD = 200; // px distance from cursor to node center to trigger a push
   const SPEED_TRIGGER = 100; // mouse speed (px/s) needed to trigger a push
   const MAX_SPEED = 5000; // cap mouse velocity so flicks don't fling nodes off
   const VELOCITY_SCALE = 0.1; // how much of mouse velocity transfers to nodes
   const RESISTANCE = 1300; // higher = stops sooner = shorter push distance
+  // Click shockwave tuning.
+  const SHOCKWAVE_FORCE = 1400; // px/s outward velocity at the epicenter
+  const SHOCKWAVE_RADIUS = 450; // px: nodes beyond this aren't pushed
   let lastX = 0;
   let lastY = 0;
   let lastT = 0;
+
+  // Shared push: fling node `i` with the given velocity, then elastic-return
+  // it to its current-state home position. The __inertiaActive lock prevents
+  // double-pushing a node mid-flight; it's released after the push phase so a
+  // fresh push can cleanly interrupt the elastic return.
+  function pushNode(i, vx, vy) {
+    const node = nodes[i];
+    if (node.__inertiaActive) return;
+    node.__inertiaActive = true;
+    gsap.to(node, {
+      inertia: {
+        x: { velocity: vx },
+        y: { velocity: vy },
+        resistance: RESISTANCE,
+      },
+      overwrite: true, // kill any in-flight elastic-return cleanly
+      onInterrupt() {
+        // Push got killed (e.g. by state change). Release the lock.
+        node.__inertiaActive = false;
+      },
+      onComplete() {
+        // Push phase done — release the lock NOW so new pushes can interrupt
+        // the elastic return that's about to start.
+        node.__inertiaActive = false;
+        const pos = STATES[currentState]?.nodes[i];
+        if (!pos) return;
+        gsap.to(node, {
+          x: stretch(pos.x, spreadX) * wrapW,
+          y: stretch(pos.y, spreadY) * wrapH,
+          duration: 1.2,
+          ease: "elastic.out(1, 0.6)",
+          // No lock callbacks — lock is already cleared. A fresh push will
+          // overwrite this tween via `overwrite: true` above.
+        });
+      },
+    });
+  }
 
   function onMove(e) {
     if (transitioning) return;
@@ -465,38 +510,40 @@ function createGraph(wrap) {
       const ncx = r.left + r.width / 2;
       const ncy = r.top + r.height / 2;
       if (Math.hypot(ncx - e.clientX, ncy - e.clientY) >= THRESHOLD) continue;
-
-      node.__inertiaActive = true;
-      gsap.to(node, {
-        inertia: {
-          x: { velocity: vx * VELOCITY_SCALE },
-          y: { velocity: vy * VELOCITY_SCALE },
-          resistance: RESISTANCE,
-        },
-        overwrite: true, // kill any in-flight elastic-return cleanly
-        onInterrupt() {
-          // Push got killed (e.g. by state change). Release the lock.
-          node.__inertiaActive = false;
-        },
-        onComplete() {
-          // Push phase done — release the lock NOW so new pushes can
-          // interrupt the elastic return that's about to start.
-          node.__inertiaActive = false;
-          const pos = STATES[currentState]?.nodes[i];
-          if (!pos) return;
-          gsap.to(node, {
-            x: stretch(pos.x, spreadX) * wrapW,
-            y: stretch(pos.y, spreadY) * wrapH,
-            duration: 1.2,
-            ease: "elastic.out(1, 0.6)",
-            // No lock callbacks — lock is already cleared. A fresh inertia
-            // push will overwrite this tween via `overwrite: true` above.
-          });
-        },
-      });
+      pushNode(i, vx * VELOCITY_SCALE, vy * VELOCITY_SCALE);
     }
   }
+
+  // Click/tap → radial shockwave. Each node within the radius is pushed
+  // directly away from the click point, harder near the epicenter (linear
+  // falloff to 0 at the edge). `click` fires on both mouse and touch, and the
+  // browser only emits it on a deliberate tap — not while scrolling past.
+  function onPress(e) {
+    if (transitioning) return;
+    if (typeof InertiaPlugin === "undefined") return;
+
+    const px = e.clientX;
+    const py = e.clientY;
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      if (node.__inertiaActive) continue;
+      const r = node.getBoundingClientRect();
+      const ncx = r.left + r.width / 2;
+      const ncy = r.top + r.height / 2;
+      const dx = ncx - px;
+      const dy = ncy - py;
+      const dist = Math.hypot(dx, dy) || 1; // guard /0 on a dead-center hit
+      if (dist > SHOCKWAVE_RADIUS) continue;
+
+      const falloff = 1 - dist / SHOCKWAVE_RADIUS; // 1 at epicenter → 0 at edge
+      const force = SHOCKWAVE_FORCE * falloff;
+      pushNode(i, (dx / dist) * force, (dy / dist) * force);
+    }
+  }
+
   window.addEventListener("mousemove", onMove);
+  wrap.addEventListener("click", onPress);
 
   // ---- Initial state -------------------------------------------------------
   layout();

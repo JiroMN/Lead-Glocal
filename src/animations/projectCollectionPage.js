@@ -77,17 +77,21 @@ export function prepProjectInDepth(current, next) {
   gsap.set(revealContent, { autoAlpha: 0 });
 
   // Project Roles — always prepped so the first paint is "only architect
-  // visible", regardless of transition path. The [data-project-role-value]
-  // is the mask (overflow:hidden) and [data-project-role-heading] is the
-  // text inside it that we slide.
+  // visible", regardless of transition path. Each [data-project-role-value]
+  // is its own overflow:hidden mask stacked in the same cell; the active
+  // role's [data-project-role-heading] sits at yPercent 0 (visible) and all
+  // others at 101 (parked below their mask). Explicit on ALL three — not
+  // just the non-architect ones — so there's zero ambiguity about which
+  // heading shows on first paint and nothing can end up clipped over
+  // another. The scroll-driven trigger relies on this clean start state.
   const roles = next.querySelector("[data-project-roles]");
   if (roles) {
     roles.querySelectorAll("[data-project-role-value]").forEach((mask) => {
       const heading = mask.querySelector("[data-project-role-heading]");
       if (!heading) return;
-      if (mask.dataset.projectRoleValue !== "architect") {
-        gsap.set(heading, { yPercent: 101 });
-      }
+      gsap.set(heading, {
+        yPercent: mask.dataset.projectRoleValue === ROLES[0] ? 0 : 101,
+      });
     });
   }
 }
@@ -223,199 +227,40 @@ export function setProjectRolesState(role) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Gesture-driven pinned section.
+// Scroll-driven step section.
 //
-// Strategy:
-//   • Pin with a 1-viewport buffer so fast scrolls can't blow past in a
-//     single frame.
-//   • Capture-phase wheel listener intercepts events BEFORE Lenis can act
-//     on them, then preventDefault + stopPropagation to fully neutralize.
-//   • Touch + keyboard handled the same way.
-//   • Each gesture advances/retreats the state by ONE step, then locks for
-//     the duration of the role-value animation. No overlap, no skipping.
-//   • At the first/last state, an outward gesture programmatically scrolls
-//     past the pin so the user falls through to the next section cleanly.
+// Native scroll only — no gesture interception, no preventDefault, no lock.
+// The section is pinned over a long scroll distance; ScrollTrigger merely
+// READS scroll progress and maps it to a discrete step (architect → builder →
+// manager). When the step changes, setProjectRolesState plays its own timed
+// tween — the animation itself is NOT scrubbed, only WHICH state is active is
+// scroll-driven. This works identically on desktop and touch because nothing
+// is intercepted: the browser's native momentum is free to do its thing, we
+// just observe where it lands. `snap` settles the scroll onto a clean state
+// (progress 0 / 0.5 / 1) when the user stops, so you never rest mid-transition.
+//
+// Relies on prep + initProjectRoles having stacked the role-value headings
+// (architect at 0, others at 101) so the first paint — at progress 0 — is a
+// clean "architect only" state with nothing clipped.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ANIMATION_LOCK_MS = 1100;
-const BURST_END_MS = 250; // wheel quiet (for "real" events) → fresh gesture
-const MIN_DELTA_Y = 5; // ignore wheel events smaller than this (inertia tail + resting-finger micro-motion)
-const TOUCH_THRESHOLD_PX = 40;
-
 let scrollTriggerInstance = null;
-let currentIndex = 0;
-let isAnimLocked = false;
-let isPinActive = false;
-let listenersAttached = false;
-let lastWheelTime = 0;
-let touchStartY = 0;
-
-function tryStep(direction) {
-  if (isAnimLocked || !isPinActive) return;
-
-  const steps = ROLES.length - 1;
-  const nextIndex = currentIndex + direction;
-
-  if (nextIndex < 0 || nextIndex > steps) {
-    releasePin(direction);
-    return;
-  }
-
-  currentIndex = nextIndex;
-  isAnimLocked = true;
-  setProjectRolesState(ROLES[currentIndex]);
-  gsap.delayedCall(ANIMATION_LOCK_MS / 1000, () => {
-    isAnimLocked = false;
-  });
-}
-
-function releasePin(direction) {
-  const st = scrollTriggerInstance;
-  if (!st) return;
-
-  isPinActive = false;
-  detachListeners();
-
-  const lenis = window.lenis;
-  const targetY = direction > 0 ? st.end + 1 : st.start - 1;
-
-  requestAnimationFrame(() => {
-    if (lenis?.scrollTo) {
-      lenis.scrollTo(targetY, { duration: 0.3 });
-    } else {
-      window.scrollTo({ top: targetY, behavior: "smooth" });
-    }
-  });
-}
-
-function activate() {
-  if (isPinActive) return;
-  isPinActive = true;
-
-  // Treat the gesture that brought the user INTO the pin as already
-  // consumed — they have to start a fresh gesture to advance. Setting
-  // lastWheelTime to "now" means subsequent events from the in-progress
-  // scroll fall inside the BURST_END_MS window and get ignored.
-  lastWheelTime = Date.now();
-  touchStartY = -1;
-
-  attachListeners();
-}
-
-function deactivate() {
-  if (!isPinActive) return;
-  isPinActive = false;
-  detachListeners();
-}
-
-function onWheel(e) {
-  if (!isPinActive) return;
-  e.preventDefault();
-  e.stopPropagation();
-
-  // Ignore micro-events FIRST, without updating lastWheelTime. These
-  // come from two sources we don't want to count:
-  //   • Trackpad resting fingers — continuous tiny deltaY noise.
-  //   • Inertia tail decaying to ~0 at the end of a hard swipe.
-  // Skipping them entirely means they neither trigger a step nor
-  // extend the burst window.
-  if (Math.abs(e.deltaY) < MIN_DELTA_Y) return;
-
-  // Animation lock blocks during the role transition. Bail BEFORE
-  // touching lastWheelTime so the inertia tail of the gesture that
-  // triggered the animation can't extend the burst window past the
-  // lock release — otherwise the user has to "wiggle" the trackpad
-  // to register a fresh gesture.
-  if (isAnimLocked) return;
-
-  const now = Date.now();
-  const gap = now - lastWheelTime;
-  lastWheelTime = now;
-
-  // Burst-end detection: only the first "real" event after a quiet
-  // period counts as a fresh gesture. Mid-swipe events get filtered out.
-  if (gap < BURST_END_MS) return;
-
-  tryStep(e.deltaY > 0 ? 1 : -1);
-}
-
-function onTouchStart(e) {
-  if (!isPinActive) return;
-  touchStartY = e.touches[0].clientY;
-}
-
-function onTouchMove(e) {
-  if (!isPinActive) return;
-  e.preventDefault();
-}
-
-function onTouchEnd(e) {
-  if (!isPinActive) return;
-  if (touchStartY < 0) return;
-  const deltaY = touchStartY - e.changedTouches[0].clientY;
-  if (Math.abs(deltaY) < TOUCH_THRESHOLD_PX) return;
-  tryStep(deltaY > 0 ? 1 : -1);
-}
-
-function onKey(e) {
-  if (!isPinActive) return;
-  const downKeys = ["ArrowDown", "PageDown", " ", "Space"];
-  const upKeys = ["ArrowUp", "PageUp"];
-  if (downKeys.includes(e.key)) {
-    e.preventDefault();
-    tryStep(1);
-  } else if (upKeys.includes(e.key)) {
-    e.preventDefault();
-    tryStep(-1);
-  }
-}
-
-function attachListeners() {
-  if (listenersAttached) return;
-  listenersAttached = true;
-  window.addEventListener("wheel", onWheel, {
-    passive: false,
-    capture: true,
-  });
-  window.addEventListener("touchstart", onTouchStart, {
-    passive: true,
-    capture: true,
-  });
-  window.addEventListener("touchmove", onTouchMove, {
-    passive: false,
-    capture: true,
-  });
-  window.addEventListener("touchend", onTouchEnd, {
-    passive: true,
-    capture: true,
-  });
-  window.addEventListener("keydown", onKey);
-}
-
-function detachListeners() {
-  if (!listenersAttached) return;
-  listenersAttached = false;
-  window.removeEventListener("wheel", onWheel, { capture: true });
-  window.removeEventListener("touchstart", onTouchStart, { capture: true });
-  window.removeEventListener("touchmove", onTouchMove, { capture: true });
-  window.removeEventListener("touchend", onTouchEnd, { capture: true });
-  window.removeEventListener("keydown", onKey);
-}
+let currentIndex = 0; // active step (0=architect, 1=builder, 2=manager)
 
 export function initProjectRolesScrollTrigger() {
   if (!refs.section || typeof ScrollTrigger === "undefined") return;
 
   if (scrollTriggerInstance) {
     scrollTriggerInstance.kill();
-    deactivate();
   }
   currentIndex = 0;
-  isAnimLocked = false;
+
+  const lastStep = ROLES.length - 1; // 2 for three roles
 
   scrollTriggerInstance = ScrollTrigger.create({
     trigger: refs.section,
-    start: "center center",
-    end: "+=100%",
+    start: "top top",
+    end: "+=300%", // scroll distance across the three steps; tune freely
     pin: true,
     // The parent <main> is `display: flex`. GSAP's default pinSpacing uses
     // `padding-bottom` on the pin-spacer to hold the layout open during the
@@ -426,10 +271,27 @@ export function initProjectRolesScrollTrigger() {
     // which flex layouts DO respect.
     pinSpacing: "margin",
     anticipatePin: 1,
-    onEnter: activate,
-    onEnterBack: activate,
-    onLeave: deactivate,
-    onLeaveBack: deactivate,
+    // Settle onto the nearest step (progress 0, 0.5, 1) when scrolling stops.
+    // `directional` only snaps the way the user was already heading, so it
+    // feels like a natural assist rather than fighting the scroll.
+    snap: {
+      snapTo: 1 / lastStep,
+      duration: { min: 0.15, max: 0.4 },
+      ease: "power1.inOut",
+      directional: true,
+    },
+    onUpdate(self) {
+      // Map continuous progress → nearest discrete step. setProjectRolesState
+      // guards same-role calls, so firing this every frame is free — it only
+      // animates when the step genuinely changes. A fast flick that skips a
+      // step (architect → manager) is handled by animateRoleValue's fromTo +
+      // overwrite, so headings never end up clipped over one another.
+      const step = Math.round(self.progress * lastStep);
+      if (step !== currentIndex) {
+        currentIndex = step;
+        setProjectRolesState(ROLES[step]);
+      }
+    },
   });
 }
 
