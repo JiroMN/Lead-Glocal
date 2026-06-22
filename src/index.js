@@ -75,7 +75,7 @@ let flipState = null;
 let flippedThumbnail = null;
 
 // Dev flag — set to true to skip the page load animation.
-const SKIP_LOAD_ANIMATION = true;
+const SKIP_LOAD_ANIMATION = false;
 
 CustomEase.create("osmo", "0.625, 0.05, 0, 1");
 CustomEase.create("loader", "0.65, 0.01, 0.05, 0.99");
