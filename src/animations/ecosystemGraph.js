@@ -444,7 +444,7 @@ function createGraph(wrap) {
   const isCoarsePointer =
     typeof window !== "undefined" &&
     window.matchMedia("(pointer: coarse)").matches;
-  const SHOCKWAVE_FORCE = isCoarsePointer ? 800 : 1400; // px/s outward at epicenter
+  const SHOCKWAVE_FORCE = isCoarsePointer ? 800 : 1000; // px/s outward at epicenter
   const SHOCKWAVE_RADIUS = 500; // px: nodes beyond this aren't pushed
   let lastX = 0;
   let lastY = 0;

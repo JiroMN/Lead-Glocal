@@ -186,9 +186,6 @@ function runPageOnceAnimation(next) {
   }
 
   tl.set(loader, { display: "flex" })
-    .set(body, {
-      backgroundColor: getVariableValue("--_colors---background-tones--80"),
-    })
     .from(logoContainer, { yPercent: 50, autoAlpha: 0 }, 0.5)
     .to(
       loadLogo,
@@ -200,8 +197,7 @@ function runPageOnceAnimation(next) {
       ">",
     )
     .to(logoContainer, { yPercent: -50, autoAlpha: 0 })
-    .to(loader, { yPercent: -101 })
-    .fromTo(next, { yPercent: 50 }, { yPercent: 0, duration: 0.8 }, "<");
+    .to(loader, { yPercent: -101 });
 
   // Only stagger the reveal-section children if the section actually exists
   // (pages like 404 don't have one).
@@ -213,13 +209,6 @@ function runPageOnceAnimation(next) {
       "<0.1",
     );
   }
-
-  tl.fromTo(next, { scale: 0.9 }, { scale: 1, duration: 0.8 }, "<0.4").set(
-    body,
-    {
-      backgroundColor: getVariableValue("--_colors---background"),
-    },
-  );
 
   tl.call(
     () => {
