@@ -44,6 +44,12 @@ import {
   initVimeoLightboxAdvanced,
 } from "./animations/vimeoPlayer";
 import { initLayoutManager } from "./utils/layoutManager";
+import { runCleanups } from "./utils/lifecycle";
+import { prepBusinessCard, initBusinessCard } from "./animations/businessCard";
+import {
+  initBusinessCardCta,
+  prepBusinessCardCta,
+} from "./animations/businessCardCta";
 
 gsap.registerPlugin(CustomEase);
 
@@ -113,6 +119,8 @@ function initBeforeEnterFunctions(current, next) {
   if (has("[data-project-hero")) prepProjectInDepth(current, next);
   if (has("[data-projects-hero]")) prepAllProjectsPage(next);
   if (has("[data-404]")) prep404(next);
+  if (has("[data-business-card]")) prepBusinessCard(next);
+  if (has("[data-business-card-button-wrap]")) prepBusinessCardCta(next);
 
   if (layoutManager) layoutManager.refresh();
 }
@@ -153,6 +161,8 @@ function initAfterEnterFunctions(next) {
   if (has("[data-follow-mouse]")) initCustomCursor();
   if (has("[data-vimeo-lightbox-init]")) initVimeoLightboxAdvanced();
   if (has("[data-vimeo-player-thumbnail]")) initThumbnail();
+  if (has("[data-business-card]")) initBusinessCard(next);
+  if (has("[data-business-card-button-wrap]")) initBusinessCardCta(next);
 
   if (hasLenis() && lenis) {
     lenis.resize();
@@ -472,6 +482,8 @@ barba.hooks.afterLeave(() => {
   if (hasScrollTrigger()) {
     ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
   }
+  // Tear down anything modules registered (WebGL contexts, tickers, observers).
+  runCleanups();
 });
 
 barba.hooks.enter((data) => {
