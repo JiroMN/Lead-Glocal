@@ -1,0 +1,22 @@
+# Webflow Project Syncer - AI Assistant Rules
+# Auto-generated during sync
+
+description: |
+  This workspace contains synced Webflow page data in .webflow/.
+  Use the CSS classes, data attributes, and CSS variables for selectors
+  and styling but DO NOT import them into files - they are ignored at build time.
+
+rules:
+  - Use classes from .webflow/classes.json for DOM selectors
+  - Use attributes from .webflow/data-attributes.json for DOM selectors
+  - Use CSS variables from .webflow/css-variables.json for custom properties
+  - Reference .webflow/index.html to understand page structure
+  - NEVER import these files - they are reference only
+  - CSS classes are applied by Webflow at runtime
+
+files:
+  classes: .webflow/classes.json
+  attributes: .webflow/data-attributes.json
+  css_variables: .webflow/css-variables.json
+  html: .webflow/index.html
+  styles: .webflow/styles/

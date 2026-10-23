@@ -1,0 +1,31 @@
+input:focus,
+input:active {
+  border-color: var(--_colors---secondary);
+}
+
+/* Loading cursor — set on <html> by default and removed via JS once init
+ * is complete. The * + !important wins over child :hover cursors so the
+ * progress hint shows everywhere, even over links and buttons. */
+html.is-loading,
+html.is-loading * {
+  cursor: progress !important;
+}
+
+[data-page-loader] {
+  display: flex;
+}
+
+.__padded-mask {
+  padding: 5px;
+}
+
+/* Home: Services */
+.services__top-role__p {
+  opacity: 100;
+}
+.services__h.is--role-name.is--absolute {
+  opacity: 100;
+}
+.services__top-heading__p.is--absolute {
+  opacity: 100;
+}
