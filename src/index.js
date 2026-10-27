@@ -45,6 +45,7 @@ import {
 } from "./animations/vimeoPlayer";
 import { initLayoutManager } from "./utils/layoutManager";
 import { runCleanups } from "./utils/lifecycle";
+import { prepGlobe, initGlobe, initGlobeSections } from "./animations/globe";
 import { prepBusinessCard, initBusinessCard } from "./animations/businessCard";
 import {
   initBusinessCardCta,
@@ -121,6 +122,7 @@ function initBeforeEnterFunctions(current, next) {
   if (has("[data-404]")) prep404(next);
   if (has("[data-business-card]")) prepBusinessCard(next);
   if (has("[data-business-card-button-wrap]")) prepBusinessCardCta(next);
+  if (has("[data-globe-shape]")) prepGlobe(next);
 
   if (layoutManager) layoutManager.refresh();
 }
@@ -163,6 +165,8 @@ function initAfterEnterFunctions(next) {
   if (has("[data-vimeo-player-thumbnail]")) initThumbnail();
   if (has("[data-business-card]")) initBusinessCard(next);
   if (has("[data-business-card-button-wrap]")) initBusinessCardCta(next);
+  if (has("[data-globe-shape]")) initGlobe();
+  if (has("[data-globe-overlaying-section]")) initGlobeSections(next);
 
   if (hasLenis() && lenis) {
     lenis.resize();

@@ -1,4 +1,4 @@
-import { getVariableValue } from "../utils/helpers";
+import { getVariableValue, largestSource } from "../utils/helpers";
 import { registerCleanup } from "../utils/lifecycle";
 import { createCardControls } from "./businessCardControls";
 
@@ -247,18 +247,6 @@ export function getBusinessCardSources(scope = document) {
       },
     ]),
   );
-}
-
-function largestSource(img) {
-  if (!img) return null;
-  const candidates = (img.getAttribute("srcset") || "")
-    .split(",")
-    .map((entry) => {
-      const [url, width = "0"] = entry.trim().split(/\s+/);
-      return { url, width: parseFloat(width) || 0 };
-    });
-  const largest = candidates.sort((a, b) => b.width - a.width)[0];
-  return largest?.url || img.getAttribute("src");
 }
 
 function resolveColor(value, element) {

@@ -135,3 +135,31 @@ export function parseWebflowDate(str) {
   );
   return isNaN(fallback.getTime()) ? null : fallback;
 }
+
+// The biggest image Webflow offers in an img's srcset, or its src.
+export function largestSource(img) {
+  if (!img) return null;
+  const candidates = (img.getAttribute("srcset") || "")
+    .split(",")
+    .map((entry) => {
+      const [url, width = "0"] = entry.trim().split(/\s+/);
+      return { url, width: parseFloat(width) || 0 };
+    });
+  const largest = candidates.sort((a, b) => b.width - a.width)[0];
+  return largest?.url || img.getAttribute("src");
+}
+
+// The smallest srcset candidate at least `width` wide, or the largest there is.
+export function sourceAtLeast(img, width) {
+  if (!img) return null;
+  const candidates = (img.getAttribute("srcset") || "")
+    .split(",")
+    .map((entry) => {
+      const [url, size = "0"] = entry.trim().split(/\s+/);
+      return { url, width: parseFloat(size) || 0 };
+    })
+    .filter(({ url }) => url)
+    .sort((a, b) => a.width - b.width);
+  const fitting = candidates.find((candidate) => candidate.width >= width);
+  return (fitting ?? candidates.at(-1))?.url || img.getAttribute("src");
+}
