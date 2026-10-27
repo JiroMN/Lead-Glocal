@@ -599,8 +599,8 @@ function initLenis() {
   lenis = new Lenis({
     lerp: 0.165,
     wheelMultiplier: 1.25,
-    smoothTouch: false, // Forceert native momentum scroll op mobiel (standaard false)
-    syncTouch: false,
+    smoothTouch: false,
+    syncTouch: true,
   });
 
   // Expose for other modules that need to lock/unlock scroll programmatically
