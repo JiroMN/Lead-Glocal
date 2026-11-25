@@ -19,6 +19,7 @@ export const defaults = {
   // When zoomed in, this latitude sits at focusY of the container height.
   // null keeps the globe centred.
   focusLat: 52,
+  focusY: 0.42,
 
   // Idle motion: "europe" sways around lon, "round" turns all the way,
   // "none" stands still.
