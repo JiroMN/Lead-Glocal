@@ -122,7 +122,7 @@ function initBeforeEnterFunctions(current, next) {
   if (has("[data-404]")) prep404(next);
   if (has("[data-business-card]")) prepBusinessCard(next);
   if (has("[data-business-card-button-wrap]")) prepBusinessCardCta(next);
-  if (has("[data-globe-shape]")) prepGlobe(next);
+  if (has("[data-globe]")) prepGlobe(next);
 
   if (layoutManager) layoutManager.refresh();
 }
@@ -165,7 +165,7 @@ function initAfterEnterFunctions(next) {
   if (has("[data-vimeo-player-thumbnail]")) initThumbnail();
   if (has("[data-business-card]")) initBusinessCard(next);
   if (has("[data-business-card-button-wrap]")) initBusinessCardCta(next);
-  if (has("[data-globe-shape]")) initGlobe();
+  if (has("[data-globe]")) initGlobe(next);
   if (has("[data-globe-overlaying-section]")) initGlobeSections(next);
 
   if (hasLenis() && lenis) {
