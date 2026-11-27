@@ -8,10 +8,11 @@ export function initLayoutManager() {
   }
   layoutManager.teleport([
     {
+      // The ecosystem map goes below the text and the theme list.
       element: "[data-ecosystems-map-wrap]",
       target: "[data-ecosystem-info-col]",
       breakpoint: "(max-width: 991px)",
-      position: 1,
+      position: 2,
     },
     {
       element: "[data-services-description-wrap]",

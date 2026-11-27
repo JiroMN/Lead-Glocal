@@ -2,8 +2,9 @@
 // OSMO PAGE TRANSITION BOILERPLATE
 // -----------------------------------------
 
-import { initEcosystems, initEcosystemCounter } from "./animations/ecosystems";
 import { initEcosystemGraphs } from "./animations/ecosystemGraph";
+import { initEcosystemThemes } from "./animations/ecosystemThemes";
+import { initEcosystemMap } from "./animations/ecosystemMap";
 import { initLinkButtons, initUnderlineButton } from "./animations/linkButtons";
 import { initScalingNavigation } from "./animations/menu";
 import { initHeadingMaskReveal } from "./animations/headingMaskReveal";
@@ -55,8 +56,7 @@ import {
 gsap.registerPlugin(CustomEase);
 
 // Loading cursor — shown until barba's first afterEnter completes. Gives
-// users immediate feedback that the page is still preparing (mostly for
-// the home page's heavy ecosystems canvas init).
+// users immediate feedback that the page is still preparing.
 document.documentElement.classList.add("is-loading");
 
 history.scrollRestoration = "manual";
@@ -108,21 +108,22 @@ function initOnceFunctions() {
   // if (has('[data-something]')) initSomething();
 }
 
-function initBeforeEnterFunctions(current, next) {
+function initBeforeEnterFunctions(current, next, trigger) {
   nextPage = next || document;
 
   // Runs before the enter animation — pre-paint from-states so no flash,
-  // and heavy setup (like the ecosystems canvas) so the loader waits for it.
+  // and heavy setup so the loader waits for it.
   if (has("[data-top-heading]")) prepTopHeading(next);
-  if (has("[data-ecosystems]")) initEcosystems(next);
+  if (has("[data-ecosystem-theme]")) initEcosystemThemes(next);
   if (has("[data-services]")) initServices(next);
   if (has("[data-contact]")) prepContactPage(next);
-  if (has("[data-project-hero")) prepProjectInDepth(current, next);
+  if (has("[data-project-hero")) prepProjectInDepth(current, next, trigger);
   if (has("[data-projects-hero]")) prepAllProjectsPage(next);
   if (has("[data-404]")) prep404(next);
   if (has("[data-business-card]")) prepBusinessCard(next);
   if (has("[data-business-card-button-wrap]")) prepBusinessCardCta(next);
   if (has("[data-globe]")) prepGlobe(next);
+  if (has("[data-ecosystems]")) initEcosystemMap(next);
 
   if (layoutManager) layoutManager.refresh();
 }
@@ -154,7 +155,6 @@ function initAfterEnterFunctions(next) {
     initProjectRoles();
     initProjectRolesScrollTrigger();
   }
-  if (has("[data-ecosystems]")) initEcosystemCounter(next);
   if (has("[data-project-highlights]")) initImagesOnPathScroll();
   if (has("[data-next-project]")) initNextProject();
   if (has("[data-projects-hero]") && has("[data-projects-grid-wrap]"))
@@ -478,7 +478,11 @@ barba.hooks.beforeEnter((data) => {
     lenis.stop();
   }
 
-  initBeforeEnterFunctions(data.current.container, data.next.container);
+  initBeforeEnterFunctions(
+    data.current.container,
+    data.next.container,
+    data.trigger,
+  );
   applyThemeFrom(data.next.container);
 });
 
@@ -520,9 +524,16 @@ barba.init({
     {
       name: "project-to-detail",
       sync: true,
-      from: { namespace: ["projects", "home"] },
+      // Only from a project card. Any other link to a project (the tooltip
+      // of the ecosystem map, back and forward) gets the default transition.
+      // The rule sits inside `from`: with both `from` and `to` on a
+      // transition, Barba ignores a `custom` next to them.
+      from: {
+        namespace: ["projects", "home"],
+        custom: ({ trigger }) =>
+          trigger instanceof Element && trigger.hasAttribute("data-project-link"),
+      },
       to: { namespace: ["project-details"] },
-      custom: ({ trigger }) => trigger.hasAttribute("data-project-link"),
       async leave(data) {
         return runProjectsLeaveAnimation(
           data.current.container,

@@ -161,6 +161,9 @@ export function initGlobe(next = document) {
   if (trigger && stage) {
     const { globe: hero, backdrop } = settings;
     const view = { progress: 0 };
+    // What is left of the turn back to Europe after leaving "round", and the
+    // scroll progress it was measured at. Scrolling up scrubs it down.
+    let returning = null;
     gsap.to(view, {
       progress: 1,
       ease: "none",
@@ -179,7 +182,16 @@ export function initGlobe(next = document) {
         globe.state.restTilt =
           (hero.tilt + (backdrop.tilt - hero.tilt) * t) * (Math.PI / 180);
         const motion = t < 0.5 ? hero.motion : backdrop.motion;
-        if (globe.config.motion !== motion) globe.set({ motion });
+        if (globe.config.motion !== motion) {
+          const left = globe.set({ motion });
+          returning = motion === hero.motion && t > 0 ? { left, t } : null;
+        }
+        if (returning) {
+          const cap = Math.abs(returning.left) * (t / returning.t);
+          if (Math.abs(globe.state.returnOffset) > cap)
+            globe.state.returnOffset = Math.sign(returning.left) * cap;
+          if (t <= 0) returning = null;
+        }
       },
     });
   }

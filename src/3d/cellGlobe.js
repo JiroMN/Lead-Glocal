@@ -118,16 +118,28 @@ export function createCellGlobe(container, options = {}) {
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
   // Live camera state, in radians. Can be tweened from outside.
+  //   rotation = idle motion + rotationOffset (drag) + returnOffset
+  //   tilt     = restTilt + tiltOffset (drag)
   const state = {
     zoom: 1,
     zoomTarget: 1,
     scale: 1, // extra size on top of zoom, e.g. to step back on scroll
     focus: 1, // 1 = focusLat at focusY when zoomed in, 0 = centred
-    restTilt: config.tilt * RAD, // the tilt the globe eases back to
+    restTilt: config.tilt * RAD, // the tilt the globe rests at
     tilt: config.tilt * RAD,
     rotation: -config.lon * RAD,
+    // What a drag added on top of the idle motion; eases back to 0.
+    rotationOffset: 0,
+    tiltOffset: 0,
+    // What is left of a turn back to Europe after leaving "round". Eases
+    // to 0 by itself; scroll can scrub it down faster, never up.
+    returnOffset: 0,
     reveal: reducedMotion ? 1 : 0,
+    locked: false, // true: rotation, tilt and zoom are driven from outside
   };
+  // The idle motion itself: where the globe would be without any drag.
+  const idle = { angle: -config.lon * RAD, mode: config.motion };
+  let wasLocked = false;
   const view = { width: 1, height: 1, dpr: 1, baseRadius: 300, mobile: false };
   const sources = { data: new Float32Array(MAX_SOURCES * 4), count: 0 };
   const trail = {
@@ -163,6 +175,22 @@ export function createCellGlobe(container, options = {}) {
   let frameRequest = 0;
   let running = false;
 
+  const swayTarget = () =>
+    -config.lon * RAD +
+    Math.sin(time * config.swaySpeed) * config.swayDeg * RAD;
+
+  // Switching the idle motion never jumps: "round" carries on from where
+  // the sway was, "europe" turns back the short way round.
+  function syncMotion() {
+    if (config.motion === idle.mode) return;
+    if (config.motion === "europe") {
+      const current = idle.angle + state.returnOffset;
+      idle.angle = swayTarget();
+      state.returnOffset = wrapToPi(current - idle.angle);
+    }
+    idle.mode = config.motion;
+  }
+
   function applyConfig() {
     const selectedMask = COUNTRIES.reduce(
       (mask, code, index) =>
@@ -195,6 +223,7 @@ export function createCellGlobe(container, options = {}) {
       pulse: hexToRgb(config.colors.pulse),
     };
     state.zoomTarget = view.mobile ? config.zoomMobile : config.zoom;
+    syncMotion();
   }
 
   function resize() {
@@ -265,33 +294,23 @@ export function createCellGlobe(container, options = {}) {
     }
 
     pointer.idle += seconds;
-    turnWithDrag(seconds);
-    if (!pointer.dragging && !reducedMotion && !state.locked) {
-      if (pointer.idle < IDLE_RETURN) {
-        // Let go: the drag coasts out.
-        const coast = Math.exp(-seconds / config.interactive.dragMomentum);
-        pointer.velocity = pointer.velocity.map((speed) => speed * coast);
-        if (!pointer.pending[0] && !pointer.pending[1]) {
-          state.rotation += pointer.velocity[0] * seconds;
-          state.tilt = clampTilt(state.tilt + pointer.velocity[1] * seconds);
-        }
-      } else {
-        // Ease back into the idle motion and the resting tilt.
-        const back = Math.min(1, (pointer.idle - IDLE_RETURN) / 3);
-        if (config.motion === "round") {
-          state.rotation += config.roundSpeed * seconds * back;
-        } else if (config.motion === "europe") {
-          const target =
-            -config.lon * RAD +
-            Math.sin(time * config.swaySpeed) * config.swayDeg * RAD;
-          const lap =
-            Math.round((state.rotation - target) / (2 * Math.PI)) * 2 * Math.PI;
-          state.rotation +=
-            (target + lap - state.rotation) * seconds * 0.8 * back;
-        }
-        if (config.motion !== "none")
-          state.tilt += (state.restTilt - state.tilt) * seconds * 0.8 * back;
+    if (state.locked) {
+      wasLocked = true;
+    } else {
+      if (wasLocked) {
+        // Handed back from outside: carry on from where it was left.
+        state.rotationOffset = wrapToPi(
+          state.rotation - idle.angle - state.returnOffset,
+        );
+        state.tiltOffset = state.tilt - state.restTilt;
+        pointer.pending = [0, 0];
+        pointer.velocity = [0, 0];
+        wasLocked = false;
       }
+      turnWithDrag(seconds);
+      if (!reducedMotion) advanceIdle(seconds);
+      state.rotation = idle.angle + state.rotationOffset + state.returnOffset;
+      state.tilt = clampTilt(state.restTilt + state.tiltOffset);
     }
 
     if (!state.locked)
@@ -345,13 +364,55 @@ export function createCellGlobe(container, options = {}) {
     if (!pendingX && !pendingY) return;
     const share = 1 - Math.exp(-seconds / config.interactive.dragWeight);
     const turn = [pendingX * share, pendingY * share];
-    state.rotation += turn[0];
-    state.tilt = clampTilt(state.tilt + turn[1]);
+    state.rotationOffset += turn[0];
+    addTilt(turn[1]);
     pointer.pending = pointer.pending.map((left, index) =>
       Math.abs(left - turn[index]) < 1e-5 ? 0 : left - turn[index],
     );
     if (seconds > 0 && pointer.dragging)
       pointer.velocity = turn.map((amount) => amount / seconds);
+  }
+
+  // Tilt stays within range by limiting the drag's part, never the rest tilt.
+  function addTilt(amount) {
+    const tilt = clampTilt(state.restTilt + state.tiltOffset + amount);
+    state.tiltOffset = tilt - state.restTilt;
+  }
+
+  // Without a hand on it the globe sways around Europe or turns round, the
+  // drag's momentum coasts out and what a drag added eases back.
+  function advanceIdle(seconds) {
+    const dragging = pointer.dragging;
+    const coasting = !dragging && pointer.idle < IDLE_RETURN;
+    const back =
+      dragging || coasting ? 0 : Math.min(1, (pointer.idle - IDLE_RETURN) / 3);
+
+    if (config.motion === "round") {
+      idle.angle += config.roundSpeed * seconds * back;
+    } else if (config.motion === "europe") {
+      // The sway is a fixed function of time; while a hand is on the globe
+      // the drag offset absorbs it, so the globe holds still under it.
+      const target = swayTarget();
+      if (dragging || coasting) state.rotationOffset -= target - idle.angle;
+      idle.angle = target;
+    }
+
+    if (coasting) {
+      const coast = Math.exp(-seconds / config.interactive.dragMomentum);
+      pointer.velocity = pointer.velocity.map((speed) => speed * coast);
+      if (!pointer.pending[0] && !pointer.pending[1]) {
+        state.rotationOffset += pointer.velocity[0] * seconds;
+        addTilt(pointer.velocity[1] * seconds);
+      }
+    }
+
+    const ease = seconds * 0.8;
+    if (config.motion === "europe") {
+      state.rotationOffset -= state.rotationOffset * ease * back;
+      state.returnOffset -= state.returnOffset * ease;
+    }
+    if (config.motion !== "none")
+      state.tiltOffset -= state.tiltOffset * ease * back;
   }
 
   function draw() {
@@ -565,6 +626,7 @@ export function createCellGlobe(container, options = {}) {
 
   resize();
   state.zoom = state.zoomTarget;
+  idle.mode = config.motion;
   if (!visibility) start();
 
   return {
@@ -582,7 +644,10 @@ export function createCellGlobe(container, options = {}) {
     // Change any option live, e.g. set({ pulse: { interval: 14 } }).
     set(changes) {
       config = merge(config, changes);
+      syncMotion();
       resize();
+      // What is left of a turn back to Europe, for scroll to scrub down.
+      return state.returnOffset;
     },
     ripple(lat, lon) {
       addRipple(toVector(lat, lon));
@@ -812,6 +877,8 @@ function angleBetween(a, b) {
 }
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const wrapToPi = (angle) =>
+  angle - Math.round(angle / (2 * Math.PI)) * 2 * Math.PI;
 const clampTilt = (tilt) =>
   clamp(tilt, TILT_RANGE[0] * RAD, TILT_RANGE[1] * RAD);
 const easeInOutCubic = (t) =>

@@ -17,7 +17,8 @@ import { debounce, parseWebflowDate } from "../utils/helpers";
 //     image clip-path reveals, reveal-content fades in.
 //
 // `useIndependentLoadIn` is the toggle. It is decided in prep based on the
-// from/to namespaces of the Barba transition.
+// from/to namespaces of the Barba transition and on what was clicked: only
+// a [data-project-link] flips.
 //
 // FLIP_FROM lists the namespaces from which a project-card click should
 // trigger the flip-transition. It mirrors the `from.namespace` array on
@@ -30,11 +31,16 @@ const PROJECT_DETAILS_NS = "project-details";
 
 let useIndependentLoadIn = true;
 
-export function prepProjectInDepth(current, next) {
+export function prepProjectInDepth(current, next, trigger) {
   const fromNS = current?.dataset?.barbaNamespace;
   const toNS = next?.dataset?.barbaNamespace;
+  // Only a click on a project card flips. Any other way in from the same
+  // pages (the tooltip of the ecosystem map, back and forward) gets the
+  // default transition and the independent load-in.
+  const fromCard =
+    trigger instanceof Element && trigger.hasAttribute("data-project-link");
   const isFlipTransition =
-    FLIP_FROM.includes(fromNS) && toNS === PROJECT_DETAILS_NS;
+    fromCard && FLIP_FROM.includes(fromNS) && toNS === PROJECT_DETAILS_NS;
   useIndependentLoadIn = !isFlipTransition;
 
   // Independent load-in starting states — splittext masks + clipped image.
